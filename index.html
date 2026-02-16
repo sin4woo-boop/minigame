@@ -1,0 +1,456 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>동물 카드 뒤집기 미니게임</title>
+    <style>
+      :root {
+        --bg: #f3fbff;
+        --card-back: #6ec1ff;
+        --card-front: #ffffff;
+        --accent: #ff9d00;
+        --text: #263238;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        font-family: "Noto Sans KR", system-ui, -apple-system, Segoe UI, sans-serif;
+        background: radial-gradient(circle at top, #ffffff 0%, var(--bg) 60%);
+        color: var(--text);
+        padding: 1rem;
+      }
+
+      .game {
+        width: min(95vw, 760px);
+        background: rgba(255, 255, 255, 0.72);
+        border-radius: 18px;
+        padding: 1rem;
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+      }
+
+      .title {
+        margin: 0 0 0.3rem;
+        text-align: center;
+        font-size: clamp(1.4rem, 2.7vw, 2rem);
+      }
+
+      .description {
+        margin: 0 0 1rem;
+        text-align: center;
+      }
+
+      .toolbar {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 0.7rem;
+        align-items: center;
+        margin-bottom: 0.8rem;
+      }
+
+      .link-box {
+        font-size: 0.86rem;
+        padding: 0.45rem 0.65rem;
+        border: 1px dashed #a3cce7;
+        border-radius: 12px;
+        background: #f8fdff;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .controls,
+      .hud {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        align-items: center;
+        gap: 0.6rem 0.9rem;
+        margin-bottom: 0.8rem;
+        font-weight: 700;
+      }
+
+      select,
+      button {
+        border: 0;
+        background: var(--accent);
+        color: #fff;
+        font-size: 0.92rem;
+        padding: 0.5rem 0.85rem;
+        border-radius: 999px;
+        cursor: pointer;
+      }
+
+      select {
+        background: #4aa9eb;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(var(--cols, 4), minmax(52px, 1fr));
+        gap: 0.62rem;
+      }
+
+      .card {
+        position: relative;
+        aspect-ratio: 1 / 1;
+        border: 0;
+        background: transparent;
+        cursor: pointer;
+        perspective: 600px;
+        padding: 0;
+      }
+
+      .inner {
+        position: absolute;
+        inset: 0;
+        transition: transform 0.35s ease;
+        transform-style: preserve-3d;
+      }
+
+      .card.flipped .inner,
+      .card.matched .inner {
+        transform: rotateY(180deg);
+      }
+
+      .face {
+        position: absolute;
+        inset: 0;
+        border-radius: 14px;
+        display: grid;
+        place-items: center;
+        backface-visibility: hidden;
+        font-size: clamp(1.5rem, 4.2vw, 2.15rem);
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+      }
+
+      .back {
+        background: linear-gradient(135deg, var(--card-back), #53d8ff);
+      }
+
+      .front {
+        transform: rotateY(180deg);
+        background: var(--card-front);
+      }
+
+      .status {
+        margin-top: 0.9rem;
+        text-align: center;
+        font-size: 1rem;
+        min-height: 1.5em;
+      }
+
+      @media (max-width: 540px) {
+        .game {
+          padding: 0.8rem;
+        }
+
+        .grid {
+          gap: 0.5rem;
+        }
+
+        .toolbar {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="game">
+      <h1 class="title">?? 동물 카드 뒤집기</h1>
+      <p class="description">같은 동물 이모지 2개를 찾아보세요!</p>
+
+      <section class="toolbar" aria-label="접속 링크">
+        <div class="link-box" id="share-link"></div>
+        <button id="copy-link" type="button">링크 복사</button>
+      </section>
+
+      <section class="controls" aria-label="게임 설정">
+        <label>
+          난이도
+          <select id="difficulty">
+            <option value="easy">쉬움 (3x4)</option>
+            <option value="normal" selected>보통 (4x4)</option>
+            <option value="hard">어려움 (4x5)</option>
+          </select>
+        </label>
+        <button id="restart" type="button">다시 하기</button>
+      </section>
+
+      <section class="hud" aria-label="게임 정보">
+        <div id="moves">시도: 0</div>
+        <div id="timer">시간: 0초</div>
+        <div id="score">점수: 0점</div>
+        <div id="best">최고기록: -</div>
+      </section>
+
+      <section class="grid" id="grid" aria-label="카드 게임판"></section>
+      <p class="status" id="status" aria-live="polite"></p>
+    </main>
+
+    <script>
+      const ANIMALS = ["??", "??", "??", "??", "??", "??", "??", "??", "??", "??", "??", "??"];
+      const CONFIG = {
+        easy: { pairs: 6, cols: 3, label: "쉬움" },
+        normal: { pairs: 8, cols: 4, label: "보통" },
+        hard: { pairs: 10, cols: 4, label: "어려움" },
+      };
+
+      const grid = document.getElementById("grid");
+      const movesEl = document.getElementById("moves");
+      const timerEl = document.getElementById("timer");
+      const scoreEl = document.getElementById("score");
+      const bestEl = document.getElementById("best");
+      const statusEl = document.getElementById("status");
+      const restartBtn = document.getElementById("restart");
+      const difficultyEl = document.getElementById("difficulty");
+      const shareLinkEl = document.getElementById("share-link");
+      const copyLinkBtn = document.getElementById("copy-link");
+
+      let deck = [];
+      let openCards = [];
+      let lock = false;
+      let moves = 0;
+      let matchedCount = 0;
+      let score = 0;
+      let startedAt = null;
+      let timerId = null;
+
+      function shuffle(array) {
+        for (let i = array.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [array[i], array[j]] = [array[j], array[i]];
+        }
+        return array;
+      }
+
+      function getConfig() {
+        return CONFIG[difficultyEl.value] ?? CONFIG.normal;
+      }
+
+      function getElapsedSeconds() {
+        if (!startedAt) {
+          return 0;
+        }
+        return Math.floor((Date.now() - startedAt) / 1000);
+      }
+
+      function playTone(type) {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) {
+          return;
+        }
+
+        const context = new AudioCtx();
+        const osc = context.createOscillator();
+        const gain = context.createGain();
+        const map = { flip: 440, match: 660, win: 880, miss: 220 };
+
+        osc.type = "triangle";
+        osc.frequency.value = map[type] || 400;
+        gain.gain.value = 0.05;
+
+        osc.connect(gain);
+        gain.connect(context.destination);
+        osc.start();
+        osc.stop(context.currentTime + (type === "win" ? 0.24 : 0.12));
+        osc.onended = () => context.close();
+      }
+
+      function updateHud() {
+        movesEl.textContent = `시도: ${moves}`;
+        timerEl.textContent = `시간: ${getElapsedSeconds()}초`;
+        scoreEl.textContent = `점수: ${score}점`;
+      }
+
+      function getBestKey() {
+        return `animal-memory-best-${difficultyEl.value}`;
+      }
+
+      function refreshBestScore() {
+        const stored = localStorage.getItem(getBestKey());
+        if (!stored) {
+          bestEl.textContent = "최고기록: -";
+          return;
+        }
+
+        const parsed = JSON.parse(stored);
+        bestEl.textContent = `최고기록: ${parsed.score}점 (${parsed.time}초)`;
+      }
+
+      function maybeSaveBest() {
+        const key = getBestKey();
+        const current = { score, time: getElapsedSeconds() };
+        const old = localStorage.getItem(key);
+        if (!old) {
+          localStorage.setItem(key, JSON.stringify(current));
+          refreshBestScore();
+          return;
+        }
+
+        const parsed = JSON.parse(old);
+        if (current.score > parsed.score || (current.score === parsed.score && current.time < parsed.time)) {
+          localStorage.setItem(key, JSON.stringify(current));
+          refreshBestScore();
+        }
+      }
+
+      function makeDeck() {
+        const { pairs, cols } = getConfig();
+        const selected = ANIMALS.slice(0, pairs);
+        grid.style.setProperty("--cols", cols);
+
+        return shuffle([...selected, ...selected]).map((emoji, index) => ({
+          id: index,
+          emoji,
+        }));
+      }
+
+      function renderBoard() {
+        grid.innerHTML = "";
+
+        deck.forEach((card) => {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className = "card";
+          button.dataset.id = card.id;
+          button.setAttribute("aria-label", "카드 뒤집기");
+
+          button.innerHTML = `
+            <span class="inner">
+              <span class="face back">?</span>
+              <span class="face front">${card.emoji}</span>
+            </span>
+          `;
+
+          button.addEventListener("click", () => onCardClick(button, card));
+          grid.appendChild(button);
+        });
+      }
+
+      function startTimer() {
+        if (timerId) {
+          return;
+        }
+
+        startedAt = Date.now();
+        timerId = setInterval(updateHud, 1000);
+      }
+
+      function stopTimer() {
+        if (!timerId) {
+          return;
+        }
+
+        clearInterval(timerId);
+        timerId = null;
+      }
+
+      function resetGame() {
+        stopTimer();
+        deck = makeDeck();
+        openCards = [];
+        lock = false;
+        moves = 0;
+        matchedCount = 0;
+        score = 0;
+        startedAt = null;
+        statusEl.textContent = "";
+        refreshBestScore();
+        updateHud();
+        renderBoard();
+      }
+
+      function markMatched(firstBtn, secondBtn, emoji) {
+        firstBtn.classList.add("matched");
+        secondBtn.classList.add("matched");
+        matchedCount += 2;
+        score += 100;
+        statusEl.textContent = `${emoji} 친구 찾기 성공!`;
+        playTone("match");
+      }
+
+      function flipBack(firstBtn, secondBtn) {
+        setTimeout(() => {
+          firstBtn.classList.remove("flipped");
+          secondBtn.classList.remove("flipped");
+          lock = false;
+          score = Math.max(0, score - 10);
+          statusEl.textContent = "아쉬워요! 다른 카드를 골라보세요!";
+          updateHud();
+          playTone("miss");
+        }, 650);
+      }
+
+      function onCardClick(button, card) {
+        if (lock || button.classList.contains("flipped") || button.classList.contains("matched")) {
+          return;
+        }
+
+        if (!startedAt) {
+          startTimer();
+        }
+
+        button.classList.add("flipped");
+        openCards.push({ button, card });
+        playTone("flip");
+
+        if (openCards.length < 2) {
+          return;
+        }
+
+        moves += 1;
+        updateHud();
+
+        const [first, second] = openCards;
+        openCards = [];
+
+        if (first.card.emoji === second.card.emoji) {
+          markMatched(first.button, second.button, first.card.emoji);
+
+          if (matchedCount === deck.length) {
+            stopTimer();
+            const elapsed = getElapsedSeconds();
+            score += Math.max(0, 300 - elapsed * 3 - moves * 5);
+            updateHud();
+            maybeSaveBest();
+            const level = getConfig().label;
+            statusEl.textContent = `?? ${level} 난이도 클리어! ${elapsed}초 / ${moves}번 시도`;
+            playTone("win");
+          }
+          return;
+        }
+
+        lock = true;
+        flipBack(first.button, second.button);
+      }
+
+      function setShareLink() {
+        shareLinkEl.textContent = `모바일 접속 링크: ${window.location.href}`;
+      }
+
+      async function copyLink() {
+        try {
+          await navigator.clipboard.writeText(window.location.href);
+          statusEl.textContent = "링크가 복사됐어요! 모바일에서 열어보세요 ??";
+        } catch (error) {
+          statusEl.textContent = "복사가 어려워요. 링크를 길게 눌러 복사해 주세요.";
+        }
+      }
+
+      restartBtn.addEventListener("click", resetGame);
+      difficultyEl.addEventListener("change", resetGame);
+      copyLinkBtn.addEventListener("click", copyLink);
+
+      setShareLink();
+      resetGame();
+    </script>
+  </body>
+</html>
