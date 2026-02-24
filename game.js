@@ -4319,6 +4319,27 @@ if (moveStickEl) {
   moveStickEl.addEventListener("lostpointercapture", () => {
     resetTouchStick();
   });
+
+  // Fallback for mobile browsers that do not fully support Pointer Events.
+  moveStickEl.addEventListener("touchstart", (e) => {
+    resumeAudio();
+    const t = e.touches[0];
+    if (!t) return;
+    updateTouchStickFromPoint(t.clientX, t.clientY);
+    e.preventDefault();
+  }, { passive: false });
+  moveStickEl.addEventListener("touchmove", (e) => {
+    const t = e.touches[0];
+    if (!t) return;
+    updateTouchStickFromPoint(t.clientX, t.clientY);
+    e.preventDefault();
+  }, { passive: false });
+  moveStickEl.addEventListener("touchend", () => {
+    resetTouchStick();
+  }, { passive: true });
+  moveStickEl.addEventListener("touchcancel", () => {
+    resetTouchStick();
+  }, { passive: true });
 }
 
 if (mobilePauseBtnEl) {
@@ -4326,6 +4347,11 @@ if (mobilePauseBtnEl) {
     resumeAudio();
     togglePauseOverlay();
   });
+  mobilePauseBtnEl.addEventListener("touchend", (e) => {
+    resumeAudio();
+    togglePauseOverlay();
+    e.preventDefault();
+  }, { passive: false });
 }
 
 restartBtn.addEventListener("click", () => {
