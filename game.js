@@ -7,7 +7,8 @@ const xpEl = document.getElementById("xp");
 const xpNeedEl = document.getElementById("xpNeed");
 const hpFillEl = document.getElementById("hpFill");
 const xpFillEl = document.getElementById("xpFill");
-const weaponPillsEl = document.getElementById("weaponPills");
+const weaponHudPillsEl = document.getElementById("weaponHudPills");
+const weaponPausePillsEl = document.getElementById("weaponPills");
 const pauseLoadoutWrapEl = document.getElementById("pauseLoadoutWrap");
 const modeLabelEl = document.getElementById("modeLabel");
 const timeEl = document.getElementById("time");
@@ -17,12 +18,15 @@ const bossNameEl = document.getElementById("bossName");
 const bossFillEl = document.getElementById("bossFill");
 const topUiEl = document.querySelector(".top-ui");
 const mobilePauseBtnEl = document.getElementById("mobilePauseBtn");
+const desktopPauseBtnEl = document.getElementById("desktopPauseBtn");
 
 const overlay = document.getElementById("overlay");
 const overlayTitle = document.getElementById("overlayTitle");
 const overlayText = document.getElementById("overlayText");
 const choicesWrap = document.getElementById("upgradeChoices");
 const restartBtn = document.getElementById("restartBtn");
+const overlayCloseBtnEl = document.getElementById("overlayCloseBtn");
+const pauseCloseBtnEl = document.getElementById("pauseCloseBtn");
 
 const keys = new Set();
 const rand = (min, max) => Math.random() * (max - min) + min;
@@ -1784,12 +1788,16 @@ function showOverlay(title, text, options) {
   overlayText.innerHTML = text;
   choicesWrap.innerHTML = "";
   if (pauseLoadoutWrapEl) pauseLoadoutWrapEl.classList.add("hidden");
+  if (overlayCloseBtnEl) overlayCloseBtnEl.classList.add("hidden");
+  if (pauseCloseBtnEl) pauseCloseBtnEl.classList.add("hidden");
   overlay.classList.toggle("upgrade-mode", options.length > 0);
 
   if (options.length === 0) {
     choicesWrap.classList.add("hidden");
     if (title === "일시 정지" && pauseLoadoutWrapEl) {
       pauseLoadoutWrapEl.classList.remove("hidden");
+      if (overlayCloseBtnEl) overlayCloseBtnEl.classList.remove("hidden");
+      if (pauseCloseBtnEl) pauseCloseBtnEl.classList.remove("hidden");
     }
     return;
   }
@@ -1820,6 +1828,8 @@ function hideOverlay() {
   overlay.classList.remove("upgrade-mode");
   overlay.classList.remove("report-mode");
   if (pauseLoadoutWrapEl) pauseLoadoutWrapEl.classList.add("hidden");
+  if (overlayCloseBtnEl) overlayCloseBtnEl.classList.add("hidden");
+  if (pauseCloseBtnEl) pauseCloseBtnEl.classList.add("hidden");
   restartBtn.classList.add("hidden");
 }
 
@@ -4096,19 +4106,8 @@ function updateHud() {
     .join("|");
   if (key !== state.lastWeaponPillsKey) {
     state.lastWeaponPillsKey = key;
-    weaponPillsEl.innerHTML = "";
-    for (const [id, w] of enabledWeaponEntries) {
-      const el = document.createElement("span");
-      el.className = `weapon-pill ${id}`;
-      el.textContent = `${w.label} Lv${getWeaponLevel(id)}`;
-      weaponPillsEl.appendChild(el);
-    }
-    if (enabledWeaponEntries.length === 0) {
-      const el = document.createElement("span");
-      el.className = "weapon-pill";
-      el.textContent = "없음";
-      weaponPillsEl.appendChild(el);
-    }
+    renderWeaponPills(weaponHudPillsEl, enabledWeaponEntries);
+    renderWeaponPills(weaponPausePillsEl, enabledWeaponEntries);
   }
 }
 
@@ -4116,6 +4115,31 @@ function formatTime(sec) {
   const m = Math.floor(sec / 60).toString().padStart(2, "0");
   const s = Math.floor(sec % 60).toString().padStart(2, "0");
   return `${m}:${s}`;
+}
+
+function getWeaponHudIconPath(weaponId) {
+  return getCardIconPath(weaponId || "core");
+}
+
+function renderWeaponPills(container, enabledWeaponEntries) {
+  if (!container) return;
+  container.innerHTML = "";
+  for (const [id, w] of enabledWeaponEntries) {
+    const el = document.createElement("span");
+    el.className = `weapon-pill ${id}`;
+    el.innerHTML = `
+      <span class="weapon-pill-icon-wrap"><img class="weapon-pill-icon" src="${getWeaponHudIconPath(id)}" alt=""></span>
+      <span class="weapon-pill-meta">${w.label}</span>
+      <span class="weapon-pill-lv">Lv${getWeaponLevel(id)}</span>
+    `;
+    container.appendChild(el);
+  }
+  if (enabledWeaponEntries.length === 0) {
+    const el = document.createElement("span");
+    el.className = "weapon-pill empty";
+    el.textContent = "없음";
+    container.appendChild(el);
+  }
 }
 
 function tick(ts) {
@@ -4134,10 +4158,17 @@ function togglePauseOverlay() {
   if (state.gameOver) return;
   state.paused = !state.paused;
   if (state.paused) {
-    showOverlay("일시 정지", "계속하려면 ESC 또는 일시정지 버튼을 누르세요.", []);
+    showOverlay("일시 정지", "계속하려면 ESC 또는 Close 버튼을 누르세요.", []);
   } else {
     hideOverlay();
   }
+}
+
+function closePauseOverlay() {
+  if (state.gameOver) return;
+  state.paused = false;
+  state.overlayOptions = [];
+  hideOverlay();
 }
 
 function resetTouchStick() {
@@ -4293,15 +4324,30 @@ if (canvas) {
 }
 
 if (mobilePauseBtnEl) {
-  mobilePauseBtnEl.addEventListener("click", () => {
-    resumeAudio();
-    togglePauseOverlay();
-  });
-  mobilePauseBtnEl.addEventListener("touchend", (e) => {
+  mobilePauseBtnEl.addEventListener("pointerup", (e) => {
     resumeAudio();
     togglePauseOverlay();
     e.preventDefault();
   }, { passive: false });
+}
+
+if (desktopPauseBtnEl) {
+  desktopPauseBtnEl.addEventListener("click", () => {
+    resumeAudio();
+    togglePauseOverlay();
+  });
+}
+
+if (overlayCloseBtnEl) {
+  overlayCloseBtnEl.addEventListener("click", () => {
+    closePauseOverlay();
+  });
+}
+
+if (pauseCloseBtnEl) {
+  pauseCloseBtnEl.addEventListener("click", () => {
+    closePauseOverlay();
+  });
 }
 
 restartBtn.addEventListener("click", () => {

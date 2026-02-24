@@ -9,6 +9,13 @@
 <body>
   <div class="top-ui">
     <div class="hud-main">
+      <div class="hud-main-head">
+        <div class="hud-brand">
+          <div class="brand-title">Plant vs Zombie</div>
+          <div class="brand-sub">Survivors</div>
+        </div>
+        <button id="desktopPauseBtn" class="hud-pause-btn" aria-label="일시 정지">Pause</button>
+      </div>
       <div class="meter-row">
         <span class="meter-label">HP</span>
         <div class="meter">
@@ -22,6 +29,10 @@
           <div id="xpFill" class="meter-fill xp-fill"></div>
         </div>
         <span><span id="xp">0</span>/<span id="xpNeed">8</span></span>
+      </div>
+      <div class="weapon-rack">
+        <div class="weapon-label">무기 보유</div>
+        <div id="weaponHudPills" class="weapon-pills"></div>
       </div>
     </div>
 
@@ -52,14 +63,18 @@
   </div>
 
   <div id="overlay" class="overlay hidden">
-    <div id="overlayTitle" class="overlay-title"></div>
-    <p id="overlayText"></p>
-    <div id="pauseLoadoutWrap" class="pause-loadout-wrap hidden">
-      <div class="pause-loadout-title">보유 무기</div>
-      <div id="weaponPills" class="weapon-pills pause-list"></div>
+    <div class="overlay-panel">
+      <button id="overlayCloseBtn" class="overlay-close-btn hidden" aria-label="닫기">x</button>
+      <div id="overlayTitle" class="overlay-title"></div>
+      <p id="overlayText"></p>
+      <div id="pauseLoadoutWrap" class="pause-loadout-wrap hidden">
+        <div class="pause-loadout-title">보유 무기</div>
+        <div id="weaponPills" class="weapon-pills pause-list"></div>
+      </div>
+      <div id="upgradeChoices" class="choices"></div>
+      <button id="pauseCloseBtn" class="overlay-action-btn hidden">Close</button>
+      <button id="restartBtn" class="hidden">다시 시작</button>
     </div>
-    <div id="upgradeChoices" class="choices"></div>
-    <button id="restartBtn" class="hidden">다시 시작</button>
   </div>
 
   <script src="balance.js"></script>
