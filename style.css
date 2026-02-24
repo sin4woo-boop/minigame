@@ -39,12 +39,6 @@ canvas {
   display: block;
 }
 
-.top-ui,
-.bottom-ui,
-.boss-hud {
-  display: none !important;
-}
-
 .top-ui {
   position: fixed;
   top: 10px;
