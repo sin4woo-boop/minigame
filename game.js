@@ -29,12 +29,10 @@ const restartBtn = document.getElementById("restartBtn");
 const keys = new Set();
 const rand = (min, max) => Math.random() * (max - min) + min;
 const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
-const isPortraitMobile = () => window.innerWidth <= 920 && window.innerHeight > window.innerWidth;
 
 function syncCanvasForViewport() {
-  const portrait = isPortraitMobile();
-  const targetW = portrait ? 540 : 960;
-  const targetH = portrait ? 960 : 540;
+  const targetW = Math.max(360, Math.floor(window.innerWidth));
+  const targetH = Math.max(640, Math.floor(window.innerHeight));
   if (canvas.width === targetW && canvas.height === targetH) return;
   canvas.width = targetW;
   canvas.height = targetH;
@@ -572,7 +570,7 @@ function resetGame() {
   state.player = {
     x: canvas.width / 2,
     y: canvas.height / 2,
-    r: 22,
+    r: 17,
     speed: 210,
     hp: 100,
     maxHp: 100,
@@ -3052,6 +3050,42 @@ function drawMiniMap() {
   ctx.fill();
 }
 
+function drawInGameHud() {
+  const p = state.player;
+  const pad = 14;
+  const topY = 14;
+
+  ctx.fillStyle = "rgba(22, 30, 27, 0.48)";
+  ctx.fillRect(pad - 6, topY - 4, 116, 28);
+  ctx.fillStyle = "rgba(241, 250, 228, 0.95)";
+  ctx.font = "900 16px 'Trebuchet MS', 'Malgun Gothic', sans-serif";
+  ctx.textAlign = "left";
+  ctx.textBaseline = "middle";
+  ctx.fillText(`KILL ${state.kills}`, pad, topY + 10);
+
+  ctx.fillStyle = "rgba(22, 30, 27, 0.48)";
+  ctx.fillRect(canvas.width / 2 - 52, topY - 4, 104, 28);
+  ctx.fillStyle = "rgba(250, 246, 225, 0.96)";
+  ctx.font = "900 17px 'Trebuchet MS', 'Malgun Gothic', sans-serif";
+  ctx.textAlign = "center";
+  ctx.fillText(formatTime(state.time), canvas.width / 2, topY + 10);
+
+  const barW = Math.min(canvas.width - 28, 420);
+  const barX = (canvas.width - barW) / 2;
+  const barY = topY + 30;
+  ctx.fillStyle = "rgba(14, 24, 21, 0.56)";
+  ctx.fillRect(barX, barY, barW, 12);
+  ctx.fillStyle = "rgba(96, 172, 255, 0.95)";
+  ctx.fillRect(barX, barY, barW * clamp(p.xp / p.xpNeed, 0, 1), 12);
+  ctx.strokeStyle = "rgba(226, 240, 255, 0.46)";
+  ctx.lineWidth = 1.2;
+  ctx.strokeRect(barX, barY, barW, 12);
+  ctx.fillStyle = "rgba(240, 248, 255, 0.95)";
+  ctx.font = "800 12px 'Trebuchet MS', 'Malgun Gothic', sans-serif";
+  ctx.textAlign = "center";
+  ctx.fillText(`Lv ${p.level}`, canvas.width / 2, barY + 22);
+}
+
 function bulletVisual(sprite) {
   if (sprite === "pea") return { glow: "rgba(131, 255, 122, 0.45)", core: "#ddffd4", trail: "rgba(116, 240, 126, 0.38)" };
   if (sprite === "spike") return { glow: "rgba(155, 255, 204, 0.42)", core: "#ecfff7", trail: "rgba(144, 231, 184, 0.34)" };
@@ -3070,7 +3104,6 @@ function draw() {
     ctx.translate(rand(-shake, shake), rand(-shake, shake));
   }
   drawBackground();
-  drawSceneAtmosphere();
   drawAmbience(dtVisual);
 
   for (const o of state.xpOrbs) {
@@ -3942,34 +3975,10 @@ function draw() {
   const moveBob = stepFrameValue((p.strideT || state.time) + p.x * 0.001, 1.0) * 0.8 * (0.35 + (p.moveMag || 0) * 0.9);
   const bob = Math.sin(state.time * 8) * 1.2 + moveBob;
   const pHurt = clamp((p.hurtTimer || 0) / 0.34, 0, 1);
-  const evoCount = getActiveEvolutionCount();
   ctx.fillStyle = "rgba(42, 90, 45, 0.18)";
   ctx.beginPath();
   ctx.ellipse(p.x, p.y + p.r * 0.95, p.r * 0.95, p.r * 0.35, 0, 0, Math.PI * 2);
   ctx.fill();
-  const pulse = 0.08 + (Math.sin(state.time * 5) + 1) * 0.04;
-  ctx.fillStyle = `rgba(220, 255, 190, ${pulse})`;
-  ctx.beginPath();
-  ctx.arc(p.x, p.y + bob * 0.5, p.r * 1.45, 0, Math.PI * 2);
-  ctx.fill();
-  if (evoCount > 0) {
-    const evoPulse = 0.5 + Math.sin(state.time * 7.5) * 0.15;
-    const evoR = p.r * (1.7 + evoCount * 0.15 + evoPulse * 0.2);
-    const evoGrad = ctx.createRadialGradient(p.x, p.y, p.r * 0.4, p.x, p.y, evoR);
-    evoGrad.addColorStop(0, `rgba(214, 255, 182, ${0.16 + evoCount * 0.04})`);
-    evoGrad.addColorStop(0.6, `rgba(174, 240, 157, ${0.08 + evoCount * 0.03})`);
-    evoGrad.addColorStop(1, "rgba(174, 240, 157, 0)");
-    ctx.fillStyle = evoGrad;
-    ctx.beginPath();
-    ctx.arc(p.x, p.y + bob * 0.4, evoR, 0, Math.PI * 2);
-    ctx.fill();
-  }
-  if (pHurt > 0) {
-    ctx.fillStyle = `rgba(255, 118, 118, ${0.12 + pHurt * 0.2})`;
-    ctx.beginPath();
-    ctx.arc(p.x, p.y + bob * 0.5, p.r * (1.5 + pHurt * 0.25), 0, Math.PI * 2);
-    ctx.fill();
-  }
 
   if (images.plant) {
     const pPulse = stepPulseValue((p.strideT || state.time) + p.y * 0.001, 9 + (p.moveMag || 0) * 4);
@@ -3993,13 +4002,13 @@ function draw() {
   ctx.beginPath();
   ctx.arc(p.x, p.y + bob * 0.4, p.r * 1.08, 0, Math.PI * 2);
   ctx.stroke();
-  if (pHurt > 0) {
-    ctx.strokeStyle = `rgba(255, 237, 210, ${0.18 + pHurt * 0.35})`;
-    ctx.lineWidth = 2.2;
-    ctx.beginPath();
-    ctx.arc(p.x, p.y + bob * 0.5, p.r * (1.18 + pHurt * 0.12), 0, Math.PI * 2);
-    ctx.stroke();
-  }
+  const hpBarW = Math.max(46, p.r * 2.8);
+  const hpBarX = p.x - hpBarW / 2;
+  const hpBarY = p.y + p.r + 10;
+  ctx.fillStyle = "rgba(17, 22, 20, 0.58)";
+  ctx.fillRect(hpBarX, hpBarY, hpBarW, 6);
+  ctx.fillStyle = "rgba(255, 104, 104, 0.96)";
+  ctx.fillRect(hpBarX, hpBarY, hpBarW * clamp(p.hp / p.maxHp, 0, 1), 6);
 
   const spike = state.player.weapons.spike;
   if (spike?.enabled) {
@@ -4052,45 +4061,7 @@ function draw() {
     }
   }
   if (shake > 0) ctx.restore();
-  drawLightingOverlay();
-
-  drawMiniMap();
-
-  const grad = ctx.createRadialGradient(
-    canvas.width / 2,
-    canvas.height / 2,
-    canvas.height * 0.3,
-    canvas.width / 2,
-    canvas.height / 2,
-    canvas.height * 0.72
-  );
-  grad.addColorStop(0, "rgba(255,255,255,0)");
-  grad.addColorStop(1, "rgba(46, 104, 54, 0.13)");
-  ctx.fillStyle = grad;
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-  if (hasActiveBoss()) {
-    const bossTone = 0.08 + Math.sin(state.time * 4) * 0.015;
-    const bossGrad = ctx.createRadialGradient(
-      canvas.width / 2,
-      canvas.height / 2,
-      canvas.height * 0.25,
-      canvas.width / 2,
-      canvas.height / 2,
-      canvas.height * 0.72
-    );
-    bossGrad.addColorStop(0, "rgba(255, 115, 126, 0)");
-    bossGrad.addColorStop(1, `rgba(121, 28, 35, ${bossTone})`);
-    ctx.fillStyle = bossGrad;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-  }
-  if (evoCount > 0) {
-    const evoTone = Math.min(0.11, 0.03 + evoCount * 0.02);
-    const evoTint = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
-    evoTint.addColorStop(0, `rgba(200, 255, 173, ${evoTone})`);
-    evoTint.addColorStop(1, "rgba(173, 255, 214, 0.01)");
-    ctx.fillStyle = evoTint;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-  }
+  drawInGameHud();
   if (pHurt > 0) {
     const hurtGrad = ctx.createRadialGradient(p.x, p.y, p.r * 0.8, p.x, p.y, canvas.width * 0.58);
     hurtGrad.addColorStop(0, "rgba(255, 64, 84, 0)");
