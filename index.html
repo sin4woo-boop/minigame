@@ -1,0 +1,71 @@
+﻿<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Plant vs Zombie Survivors</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="top-ui">
+    <div class="hud-main">
+      <div class="meter-row">
+        <span class="meter-label">HP</span>
+        <div class="meter">
+          <div id="hpFill" class="meter-fill hp-fill"></div>
+        </div>
+        <span id="hp">100</span>
+      </div>
+      <div class="meter-row">
+        <span class="meter-label">XP</span>
+        <div class="meter">
+          <div id="xpFill" class="meter-fill xp-fill"></div>
+        </div>
+        <span><span id="xp">0</span>/<span id="xpNeed">8</span></span>
+      </div>
+    </div>
+
+    <div class="side-stats">
+      <div class="hud-chip stat-level">Lv <span id="level">1</span></div>
+      <div class="hud-chip">Time <span id="time">00:00</span></div>
+      <div class="hud-chip">Zombies <span id="zombieCount">0</span></div>
+      <div class="hud-chip">Mode <span id="modeLabel">NORMAL</span></div>
+    </div>
+  </div>
+
+  <div class="bottom-ui">
+    <div class="hint-chip">Move: WASD / Arrow Keys</div>
+    <div class="hint-chip">Pause: ESC</div>
+    <div class="hint-chip">Mode: F1/F2/F3</div>
+    <div class="hint-chip">Audio: F6 / FX: F7/F8/F9 / Test: F10/F11/F12</div>
+  </div>
+
+  <div id="bossHud" class="boss-hud hidden">
+    <div id="bossName" class="boss-name">보스: 망치 대장</div>
+    <div class="boss-meter"><div id="bossFill" class="boss-fill"></div></div>
+  </div>
+
+  <canvas id="game" width="960" height="540"></canvas>
+
+  <div class="mobile-controls">
+    <button id="mobilePauseBtn" class="mobile-pause-btn">II</button>
+    <div id="moveStick" class="move-stick">
+      <div id="moveStickKnob" class="move-stick-knob"></div>
+    </div>
+  </div>
+
+  <div id="overlay" class="overlay hidden">
+    <div id="overlayTitle" class="overlay-title"></div>
+    <p id="overlayText"></p>
+    <div id="pauseLoadoutWrap" class="pause-loadout-wrap hidden">
+      <div class="pause-loadout-title">보유 무기</div>
+      <div id="weaponPills" class="weapon-pills pause-list"></div>
+    </div>
+    <div id="upgradeChoices" class="choices"></div>
+    <button id="restartBtn" class="hidden">다시 시작</button>
+  </div>
+
+  <script src="balance.js"></script>
+  <script src="game.js"></script>
+</body>
+</html>

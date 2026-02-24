@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="112" height="112" viewBox="0 0 112 112">
+  <ellipse cx="56" cy="98" rx="18" ry="7" fill="#121b1f" opacity="0.3"/>
+
+  <rect x="30" y="17" width="50" height="42" rx="9" fill="#9abf87" stroke="#1b2428" stroke-width="4"/>
+  <rect x="22" y="55" width="66" height="30" rx="5" fill="#3d8ecc" stroke="#1b2428" stroke-width="4"/>
+
+  <circle cx="47" cy="39" r="6.3" fill="#edf5ef" stroke="#1b2428" stroke-width="3"/>
+  <circle cx="66" cy="39" r="5.7" fill="#edf5ef" stroke="#1b2428" stroke-width="3"/>
+  <circle cx="47" cy="39" r="1.6" fill="#1b2428"/>
+  <circle cx="66" cy="39" r="1.5" fill="#1b2428"/>
+  <path d="M45 50 L65 50" stroke="#1b2428" stroke-width="3.2" stroke-linecap="round"/>
+
+  <path d="M24 61 L14 65 L21 71 Z" fill="#1b2428"/>
+  <path d="M88 61 L98 65 L91 71 Z" fill="#1b2428"/>
+
+  <rect x="32" y="88" width="6" height="10" rx="1.5" fill="#1b2428"/>
+  <rect x="74" y="88" width="6" height="10" rx="1.5" fill="#1b2428"/>
+
+  <rect x="40" y="60" width="8" height="20" rx="2" fill="#91d3ff" opacity="0.86"/>
+  <rect x="52" y="58" width="8" height="22" rx="2" fill="#91d3ff" opacity="0.86"/>
+  <rect x="64" y="60" width="8" height="20" rx="2" fill="#91d3ff" opacity="0.86"/>
+
+  <path d="M56 14 L62 26 L56 23 L50 26 Z" fill="#ffd370" stroke="#1b2428" stroke-width="3"/>
+</svg>

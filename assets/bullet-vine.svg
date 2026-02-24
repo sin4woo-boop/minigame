@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96">
+  <defs>
+    <radialGradient id="vgLeaf" cx="42%" cy="32%" r="68%">
+      <stop offset="0%" stop-color="#baf293"/>
+      <stop offset="100%" stop-color="#4f9c3e"/>
+    </radialGradient>
+  </defs>
+  <circle cx="48" cy="48" r="36" fill="#f6ffe9" opacity="0.9"/>
+  <path d="M48 18 C34 30 30 50 48 78 C66 50 62 30 48 18Z" fill="url(#vgLeaf)" stroke="#2d6631" stroke-width="4"/>
+  <path d="M26 44 C40 42 54 48 70 52" stroke="#2d6631" stroke-width="4" fill="none" stroke-linecap="round"/>
+  <path d="M48 24 L48 74" stroke="#2d6631" stroke-width="3" fill="none" stroke-linecap="round"/>
+  <circle cx="48" cy="48" r="7" fill="#d8ffb2" opacity="0.8"/>
+</svg>
