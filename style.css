@@ -766,7 +766,7 @@ button {
 
 @media (max-width: 920px) {
   canvas {
-    width: 95vw;
+    width: min(95vw, 720px);
     height: auto;
   }
 
@@ -808,7 +808,7 @@ button {
   }
 
   .boss-hud {
-    top: 92px;
+    top: 84px;
     width: 94vw;
   }
 
@@ -824,5 +824,80 @@ button {
 
   .meter-row {
     margin: 3px 0;
+  }
+}
+
+@media (max-width: 920px) and (orientation: portrait) {
+  .top-ui {
+    width: calc(100vw - 10px);
+    left: 5px;
+    transform: none;
+    top: 4px;
+    grid-template-columns: 1fr;
+    gap: 6px;
+    padding: 5px;
+    border-radius: 12px;
+  }
+
+  .hud-main {
+    padding: 7px 8px;
+  }
+
+  .meter-row {
+    grid-template-columns: 28px 1fr auto;
+    gap: 6px;
+  }
+
+  .meter {
+    height: 10px;
+  }
+
+  .side-stats {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 5px;
+  }
+
+  .hud-chip {
+    font-size: 10px;
+    padding: 5px 4px;
+    border-radius: 9px;
+  }
+
+  .boss-hud {
+    top: 120px;
+    width: calc(100vw - 12px);
+    padding: 7px 10px 8px;
+  }
+
+  canvas {
+    margin-top: 140px;
+    width: min(96vw, calc((100vh - 270px) * 0.5625));
+    max-height: calc(100vh - 270px);
+    height: auto;
+    border-radius: 16px;
+  }
+
+  .mobile-controls {
+    display: flex;
+    left: 8px;
+    right: 8px;
+    bottom: 8px;
+  }
+
+  .move-stick {
+    width: 108px;
+    height: 108px;
+  }
+
+  .move-stick-knob {
+    width: 46px;
+    height: 46px;
+  }
+
+  .mobile-pause-btn {
+    width: 48px;
+    height: 48px;
+    bottom: 16px;
+    right: 0;
   }
 }

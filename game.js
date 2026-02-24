@@ -29,6 +29,21 @@ const restartBtn = document.getElementById("restartBtn");
 const keys = new Set();
 const rand = (min, max) => Math.random() * (max - min) + min;
 const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
+const isPortraitMobile = () => window.innerWidth <= 920 && window.innerHeight > window.innerWidth;
+
+function syncCanvasForViewport() {
+  const portrait = isPortraitMobile();
+  const targetW = portrait ? 540 : 960;
+  const targetH = portrait ? 960 : 540;
+  if (canvas.width === targetW && canvas.height === targetH) return;
+  canvas.width = targetW;
+  canvas.height = targetH;
+  state.ambience = createAmbience();
+  if (state.player) {
+    state.player.x = clamp(state.player.x, state.player.r, canvas.width - state.player.r);
+    state.player.y = clamp(state.player.y, state.player.r, canvas.height - state.player.r);
+  }
+}
 
 const images = {};
 const BALANCE = window.GAME_BALANCE;
@@ -522,6 +537,7 @@ function applyPlayerDamage(amount, sourceX = null, sourceY = null) {
 }
 
 function resetGame() {
+  syncCanvasForViewport();
   state.running = true;
   state.paused = false;
   state.gameOver = false;
@@ -4317,7 +4333,16 @@ restartBtn.addEventListener("click", () => {
   resetGame();
 });
 
+window.addEventListener("resize", () => {
+  syncCanvasForViewport();
+});
+
+window.addEventListener("orientationchange", () => {
+  syncCanvasForViewport();
+});
+
 async function start() {
+  syncCanvasForViewport();
   try {
     await loadAssets();
   } catch (err) {
