@@ -31,11 +31,16 @@ const rand = (min, max) => Math.random() * (max - min) + min;
 const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
 
 function syncCanvasForViewport() {
-  const targetW = Math.max(360, Math.floor(window.innerWidth));
-  const targetH = Math.max(640, Math.floor(window.innerHeight));
+  const vv = window.visualViewport;
+  const vw = vv ? vv.width : window.innerWidth;
+  const vh = vv ? vv.height : window.innerHeight;
+  const targetW = Math.max(1, Math.floor(vw));
+  const targetH = Math.max(1, Math.floor(vh));
   if (canvas.width === targetW && canvas.height === targetH) return;
   canvas.width = targetW;
   canvas.height = targetH;
+  canvas.style.width = `${targetW}px`;
+  canvas.style.height = `${targetH}px`;
   state.ambience = createAmbience();
   if (state.player) {
     state.player.x = clamp(state.player.x, state.player.r, canvas.width - state.player.r);
@@ -1798,38 +1803,12 @@ function showOverlay(title, text, options) {
   for (let i = 0; i < options.length; i += 1) {
     const opt = options[i];
     const meta = getUpgradeCardMeta(opt);
-    const currentLevel = opt.weaponId ? getWeaponLevel(opt.weaponId) : 0;
-    const nextLevel = opt.weaponId
-      ? (opt.type === "EVOLVE"
-        ? MAX_WEAPON_LEVEL
-        : opt.title.includes("강화")
-        ? Math.min(MAX_WEAPON_LEVEL, currentLevel + 1)
-        : (opt.title.includes("해금") ? Math.max(1, currentLevel) : currentLevel))
-      : currentLevel;
-    const levelText = opt.weaponId && opt.type === "EVOLVE"
-      ? `<div class="choice-level"><span class="choice-level-label">진화 완료</span>${renderLeafLevel(MAX_WEAPON_LEVEL)}</div>`
-      : opt.weaponId
-      ? `<div class="choice-level"><span class="choice-level-label">LV ${currentLevel} -> ${nextLevel}</span>${renderLeafLevel(nextLevel)}</div>`
-      : `<div class="choice-level neutral"><span class="choice-level-label">지원 카드</span></div>`;
-    const evoText = opt.type === "EVOLVE"
-      ? `<div class="choice-evo">합체 진화: 재료 무기 2개를 1개로 통합</div>`
-      : opt.weaponId
-      ? `<div class="choice-evo">${getEvolutionHint(opt.weaponId)}</div>`
-      : `<div class="choice-evo">진화 비대상</div>`;
     const btn = document.createElement("button");
-    btn.className = `choice tier-${meta.tier} icon-${meta.icon}`;
+    btn.className = `choice icon-${meta.icon}`;
     btn.innerHTML = `
-      <div class="choice-key">${i + 1}</div>
       <div class="choice-icon-wrap"><img class="choice-icon" src="${getCardIconPath(meta.icon)}" alt=""></div>
-      <div class="choice-top">
-        <span class="choice-type">${meta.type}</span>
-        <span class="choice-tier">${meta.tier.toUpperCase()}</span>
-      </div>
       <div class="choice-title">${opt.title}</div>
       <div class="choice-desc">${opt.desc}</div>
-      ${levelText}
-      ${evoText}
-      <div class="choice-cta">선택</div>
     `;
     btn.style.setProperty("--delay", `${i * 45}ms`);
     btn.addEventListener("click", () => {
@@ -4337,6 +4316,11 @@ window.addEventListener("resize", () => {
 window.addEventListener("orientationchange", () => {
   syncCanvasForViewport();
 });
+
+if (window.visualViewport) {
+  window.visualViewport.addEventListener("resize", syncCanvasForViewport);
+  window.visualViewport.addEventListener("scroll", syncCanvasForViewport);
+}
 
 async function start() {
   syncCanvasForViewport();
