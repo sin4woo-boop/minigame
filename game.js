@@ -16,8 +16,6 @@ const bossHudEl = document.getElementById("bossHud");
 const bossNameEl = document.getElementById("bossName");
 const bossFillEl = document.getElementById("bossFill");
 const topUiEl = document.querySelector(".top-ui");
-const moveStickEl = document.getElementById("moveStick");
-const moveStickKnobEl = document.getElementById("moveStickKnob");
 const mobilePauseBtnEl = document.getElementById("mobilePauseBtn");
 
 const overlay = document.getElementById("overlay");
@@ -570,7 +568,6 @@ function resetGame() {
   state.testMode = false;
   state.testEvolutionIndex = 0;
   state.touchMove = { active: false, ax: 0, ay: 0, pointerId: null };
-  if (moveStickKnobEl) moveStickKnobEl.style.transform = "translate(-50%, -50%)";
 
   state.player = {
     x: canvas.width / 2,
@@ -4148,25 +4145,23 @@ function resetTouchStick() {
   state.touchMove.ax = 0;
   state.touchMove.ay = 0;
   state.touchMove.pointerId = null;
-  if (moveStickKnobEl) moveStickKnobEl.style.transform = "translate(-50%, -50%)";
 }
 
 function updateTouchStickFromPoint(clientX, clientY) {
-  if (!moveStickEl || !moveStickKnobEl) return;
-  const rect = moveStickEl.getBoundingClientRect();
-  const cx = rect.left + rect.width / 2;
-  const cy = rect.top + rect.height / 2;
-  const dx = clientX - cx;
-  const dy = clientY - cy;
-  const maxR = rect.width * 0.36;
+  if (!state.player) return;
+  const rect = canvas.getBoundingClientRect();
+  if (!rect.width || !rect.height) return;
+  const x = (clientX - rect.left) * (canvas.width / rect.width);
+  const y = (clientY - rect.top) * (canvas.height / rect.height);
+  const dx = x - state.player.x;
+  const dy = y - state.player.y;
+  const deadZone = 14;
+  const maxR = 130;
   const len = Math.hypot(dx, dy) || 1;
-  const clamped = len > maxR ? maxR : len;
-  const nx = (dx / len) * clamped;
-  const ny = (dy / len) * clamped;
+  const mag = len <= deadZone ? 0 : clamp((len - deadZone) / (maxR - deadZone), 0, 1);
   state.touchMove.active = true;
-  state.touchMove.ax = nx / maxR;
-  state.touchMove.ay = ny / maxR;
-  moveStickKnobEl.style.transform = `translate(calc(-50% + ${nx}px), calc(-50% + ${ny}px))`;
+  state.touchMove.ax = (dx / len) * mag;
+  state.touchMove.ay = (dy / len) * mag;
 }
 
 window.addEventListener("keydown", (e) => {
@@ -4249,14 +4244,16 @@ window.addEventListener("keyup", (e) => {
   keys.delete(e.code);
 });
 
-if (moveStickEl) {
-  moveStickEl.addEventListener("pointerdown", (e) => {
+if (canvas) {
+  canvas.addEventListener("pointerdown", (e) => {
+    if (state.paused || state.gameOver) return;
     resumeAudio();
-    moveStickEl.setPointerCapture?.(e.pointerId);
+    canvas.setPointerCapture?.(e.pointerId);
     state.touchMove.pointerId = e.pointerId;
     updateTouchStickFromPoint(e.clientX, e.clientY);
+    e.preventDefault();
   });
-  moveStickEl.addEventListener("pointermove", (e) => {
+  canvas.addEventListener("pointermove", (e) => {
     if (state.touchMove.pointerId !== e.pointerId) return;
     updateTouchStickFromPoint(e.clientX, e.clientY);
   });
@@ -4264,30 +4261,33 @@ if (moveStickEl) {
     if (state.touchMove.pointerId !== e.pointerId) return;
     resetTouchStick();
   };
-  moveStickEl.addEventListener("pointerup", endStick);
-  moveStickEl.addEventListener("pointercancel", endStick);
-  moveStickEl.addEventListener("lostpointercapture", () => {
+  canvas.addEventListener("pointerup", endStick);
+  canvas.addEventListener("pointercancel", endStick);
+  canvas.addEventListener("lostpointercapture", () => {
     resetTouchStick();
   });
 
   // Fallback for mobile browsers that do not fully support Pointer Events.
-  moveStickEl.addEventListener("touchstart", (e) => {
+  canvas.addEventListener("touchstart", (e) => {
+    if (state.paused || state.gameOver) return;
     resumeAudio();
     const t = e.touches[0];
     if (!t) return;
+    state.touchMove.pointerId = "touch";
     updateTouchStickFromPoint(t.clientX, t.clientY);
     e.preventDefault();
   }, { passive: false });
-  moveStickEl.addEventListener("touchmove", (e) => {
+  canvas.addEventListener("touchmove", (e) => {
+    if (state.touchMove.pointerId !== "touch") return;
     const t = e.touches[0];
     if (!t) return;
     updateTouchStickFromPoint(t.clientX, t.clientY);
     e.preventDefault();
   }, { passive: false });
-  moveStickEl.addEventListener("touchend", () => {
+  canvas.addEventListener("touchend", () => {
     resetTouchStick();
   }, { passive: true });
-  moveStickEl.addEventListener("touchcancel", () => {
+  canvas.addEventListener("touchcancel", () => {
     resetTouchStick();
   }, { passive: true });
 }

@@ -294,35 +294,8 @@ canvas {
   pointer-events: none;
 }
 
-.move-stick,
 .mobile-pause-btn {
   pointer-events: auto;
-}
-
-.move-stick {
-  position: absolute;
-  left: 14px;
-  bottom: 16px;
-  width: 120px;
-  height: 120px;
-  border-radius: 999px;
-  border: 1.5px solid rgba(225, 241, 222, 0.62);
-  background: radial-gradient(circle at 35% 30%, rgba(240, 255, 236, 0.32), rgba(23, 38, 30, 0.42));
-  position: relative;
-  box-shadow: 0 8px 22px rgba(10, 20, 15, 0.35);
-}
-
-.move-stick-knob {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 52px;
-  height: 52px;
-  transform: translate(-50%, -50%);
-  border-radius: 999px;
-  border: 1px solid rgba(241, 252, 236, 0.8);
-  background: linear-gradient(180deg, rgba(238, 255, 229, 0.85), rgba(166, 214, 160, 0.78));
-  box-shadow: 0 5px 12px rgba(8, 18, 12, 0.34);
 }
 
 .mobile-pause-btn {
@@ -769,16 +742,6 @@ button {
 }
 
 @media (max-width: 920px) and (orientation: portrait) {
-  .move-stick {
-    width: 108px;
-    height: 108px;
-  }
-
-  .move-stick-knob {
-    width: 46px;
-    height: 46px;
-  }
-
   .mobile-pause-btn {
     width: 48px;
     height: 48px;
