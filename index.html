@@ -1,78 +1,75 @@
 ﻿<!doctype html>
 <html lang="ko">
+
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="viewport"
+    content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <title>Plant vs Zombie Survivors</title>
   <link rel="stylesheet" href="style.css" />
 </head>
+
 <body>
   <div class="top-ui">
-    <div class="hud-main">
-      <div class="hud-main-head">
-        <div class="hud-brand">
-          <div class="brand-title">Plant vs Zombie</div>
-          <div class="brand-sub">Survivors</div>
+    <!-- 상단 행: 일시정지 | 타이머 | 킬카운트 -->
+    <div class="hud-top-row">
+      <button id="desktopPauseBtn" class="hud-pause-btn" aria-label="일시 정지">❚❚</button>
+      <div class="hud-time-shell"><span id="time">00:00</span></div>
+      <div class="hud-right-stack">
+        <div class="hud-chip skull-chip">
+          <span class="chip-icon">☠</span>
+          <span id="zombieCount">0</span>
         </div>
-        <button id="desktopPauseBtn" class="hud-pause-btn" aria-label="일시 정지">Pause</button>
       </div>
-      <div class="meter-row">
-        <span class="meter-label">HP</span>
-        <div class="meter">
-          <div id="hpFill" class="meter-fill hp-fill"></div>
-        </div>
-        <span id="hp">100</span>
-      </div>
-      <div class="meter-row">
-        <span class="meter-label">XP</span>
-        <div class="meter">
+    </div>
+
+    <!-- 하단 행: XP 바 + 레벨 -->
+    <div class="hud-mid-row">
+      <div class="xp-bar-container">
+        <div class="meter xp-meter">
           <div id="xpFill" class="meter-fill xp-fill"></div>
         </div>
-        <span><span id="xp">0</span>/<span id="xpNeed">8</span></span>
-      </div>
-      <div class="weapon-rack">
-        <div class="weapon-label">무기 보유</div>
-        <div id="weaponHudPills" class="weapon-pills"></div>
+        <div class="hud-level-badge"><span id="level">1</span></div>
       </div>
     </div>
 
-    <div class="side-stats">
-      <div class="hud-chip stat-level">Lv <span id="level">1</span></div>
-      <div class="hud-chip">Time <span id="time">00:00</span></div>
-      <div class="hud-chip">Zombies <span id="zombieCount">0</span></div>
-      <div class="hud-chip">Mode <span id="modeLabel">NORMAL</span></div>
+    <div id="weaponHudPills" class="weapon-pills hud-weapon-strip"></div>
+    <div class="hud-hidden-bindings" aria-hidden="true">
+      <span id="modeLabel">NORMAL</span>
+      <span id="hp">100</span>
+      <span id="hpFill"></span>
+      <span id="xp">0</span>
+      <span id="xpNeed">8</span>
     </div>
-  </div>
-
-  <div class="bottom-ui">
-    <div class="hint-chip">Move: WASD / Arrow Keys</div>
-    <div class="hint-chip">Pause: ESC</div>
-    <div class="hint-chip">Mode: F1/F2/F3</div>
-    <div class="hint-chip">Audio: F6 / FX: F7/F8/F9 / Test: F10/F11/F12</div>
   </div>
 
   <div id="bossHud" class="boss-hud hidden">
     <div id="bossName" class="boss-name">보스: 망치 대장</div>
-    <div class="boss-meter"><div id="bossFill" class="boss-fill"></div></div>
+    <div class="boss-meter">
+      <div id="bossFill" class="boss-fill"></div>
+    </div>
   </div>
 
   <canvas id="game" width="960" height="540"></canvas>
 
   <div class="mobile-controls">
-    <button id="mobilePauseBtn" class="mobile-pause-btn">II</button>
+    <button id="mobilePauseBtn" class="mobile-pause-btn" aria-label="일시 정지">II</button>
   </div>
 
   <div id="overlay" class="overlay hidden">
     <div class="overlay-panel">
-      <button id="overlayCloseBtn" class="overlay-close-btn hidden" aria-label="닫기">x</button>
       <div id="overlayTitle" class="overlay-title"></div>
       <p id="overlayText"></p>
+
       <div id="pauseLoadoutWrap" class="pause-loadout-wrap hidden">
-        <div class="pause-loadout-title">보유 무기</div>
-        <div id="weaponPills" class="weapon-pills pause-list"></div>
+        <div class="pause-section">
+          <div class="pause-section-title">무기 스킬</div>
+          <div id="weaponPills" class="weapon-pills pause-list"></div>
+        </div>
       </div>
+
       <div id="upgradeChoices" class="choices"></div>
-      <button id="pauseCloseBtn" class="overlay-action-btn hidden">Close</button>
+      <button id="pauseCloseBtn" class="overlay-action-btn hidden">계속하기</button>
       <button id="restartBtn" class="hidden">다시 시작</button>
     </div>
   </div>
@@ -80,4 +77,5 @@
   <script src="balance.js"></script>
   <script src="game.js"></script>
 </body>
+
 </html>

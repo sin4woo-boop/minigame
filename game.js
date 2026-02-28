@@ -299,7 +299,7 @@ const state = {
   runStats: { damageByWeapon: {} },
   testMode: false,
   testEvolutionIndex: 0,
-  touchMove: { active: false, ax: 0, ay: 0, pointerId: null },
+  touchMove: { active: false, ax: 0, ay: 0, pointerId: null, originX: 0, originY: 0 },
 };
 
 function createAmbience() {
@@ -1786,6 +1786,7 @@ function showOverlay(title, text, options) {
   overlay.classList.remove("report-mode");
   overlayTitle.textContent = options.length > 0 ? "스킬 선택" : title;
   overlayText.innerHTML = text;
+  overlayText.classList.toggle("hidden", !text);
   choicesWrap.innerHTML = "";
   if (pauseLoadoutWrapEl) pauseLoadoutWrapEl.classList.add("hidden");
   if (overlayCloseBtnEl) overlayCloseBtnEl.classList.add("hidden");
@@ -4047,7 +4048,6 @@ function draw() {
     }
   }
   if (shake > 0) ctx.restore();
-  drawInGameHud();
   if (pHurt > 0) {
     const hurtGrad = ctx.createRadialGradient(p.x, p.y, p.r * 0.8, p.x, p.y, canvas.width * 0.58);
     hurtGrad.addColorStop(0, "rgba(255, 64, 84, 0)");
@@ -4065,7 +4065,7 @@ function updateHud() {
   xpEl.textContent = p.xp;
   xpNeedEl.textContent = p.xpNeed;
   timeEl.textContent = formatTime(state.time);
-  zombieCountEl.textContent = state.zombies.length;
+  zombieCountEl.textContent = state.kills;
   hpFillEl.style.width = `${clamp((p.hp / p.maxHp) * 100, 0, 100)}%`;
   xpFillEl.style.width = `${clamp((p.xp / p.xpNeed) * 100, 0, 100)}%`;
   modeLabelEl.textContent = state.testMode ? "TEST" : getPreset().name;
@@ -4158,7 +4158,7 @@ function togglePauseOverlay() {
   if (state.gameOver) return;
   state.paused = !state.paused;
   if (state.paused) {
-    showOverlay("일시 정지", "계속하려면 ESC 또는 Close 버튼을 누르세요.", []);
+    showOverlay("일시 정지", "", []);
   } else {
     hideOverlay();
   }
@@ -4171,28 +4171,65 @@ function closePauseOverlay() {
   hideOverlay();
 }
 
+/* ── 가상 조이스틱 DOM 생성 ── */
+const vjBase = document.createElement("div");
+vjBase.className = "vj-base";
+const vjKnob = document.createElement("div");
+vjKnob.className = "vj-knob";
+vjBase.appendChild(vjKnob);
+document.body.appendChild(vjBase);
+
+function showVirtualJoystick(cx, cy) {
+  vjBase.style.left = cx + "px";
+  vjBase.style.top = cy + "px";
+  vjBase.style.display = "block";
+  vjKnob.style.transform = "translate(-50%, -50%)";
+}
+
+function moveVirtualJoystickKnob(dx, dy) {
+  const maxVisual = 36; // 최대 이동 표현 (px)
+  const len = Math.hypot(dx, dy) || 1;
+  const clamped = Math.min(len, maxVisual);
+  const nx = (dx / len) * clamped;
+  const ny = (dy / len) * clamped;
+  vjKnob.style.transform = `translate(calc(-50% + ${nx}px), calc(-50% + ${ny}px))`;
+}
+
+function hideVirtualJoystick() {
+  vjBase.style.display = "none";
+  vjKnob.style.transform = "translate(-50%, -50%)";
+}
+
 function resetTouchStick() {
   state.touchMove.active = false;
   state.touchMove.ax = 0;
   state.touchMove.ay = 0;
   state.touchMove.pointerId = null;
+  state.touchMove.originX = 0;
+  state.touchMove.originY = 0;
+  hideVirtualJoystick();
+}
+
+function setTouchOrigin(clientX, clientY) {
+  state.touchMove.originX = clientX;
+  state.touchMove.originY = clientY;
+  showVirtualJoystick(clientX, clientY);
 }
 
 function updateTouchStickFromPoint(clientX, clientY) {
   if (!state.player) return;
-  const rect = canvas.getBoundingClientRect();
-  if (!rect.width || !rect.height) return;
-  const x = (clientX - rect.left) * (canvas.width / rect.width);
-  const y = (clientY - rect.top) * (canvas.height / rect.height);
-  const dx = x - state.player.x;
-  const dy = y - state.player.y;
-  const deadZone = 14;
-  const maxR = 130;
+  const ox = state.touchMove.originX;
+  const oy = state.touchMove.originY;
+  const dx = clientX - ox;
+  const dy = clientY - oy;
+  const deadZone = 10;
+  const maxR = 60;
   const len = Math.hypot(dx, dy) || 1;
   const mag = len <= deadZone ? 0 : clamp((len - deadZone) / (maxR - deadZone), 0, 1);
   state.touchMove.active = true;
   state.touchMove.ax = (dx / len) * mag;
   state.touchMove.ay = (dy / len) * mag;
+  moveVirtualJoystickKnob(dx, dy);
 }
 
 window.addEventListener("keydown", (e) => {
@@ -4281,7 +4318,11 @@ if (canvas) {
     resumeAudio();
     canvas.setPointerCapture?.(e.pointerId);
     state.touchMove.pointerId = e.pointerId;
-    updateTouchStickFromPoint(e.clientX, e.clientY);
+    setTouchOrigin(e.clientX, e.clientY);
+    // 터치 시작점에서 움직이지 않으면 정지
+    state.touchMove.active = true;
+    state.touchMove.ax = 0;
+    state.touchMove.ay = 0;
     e.preventDefault();
   });
   canvas.addEventListener("pointermove", (e) => {
@@ -4305,7 +4346,10 @@ if (canvas) {
     const t = e.touches[0];
     if (!t) return;
     state.touchMove.pointerId = "touch";
-    updateTouchStickFromPoint(t.clientX, t.clientY);
+    setTouchOrigin(t.clientX, t.clientY);
+    state.touchMove.active = true;
+    state.touchMove.ax = 0;
+    state.touchMove.ay = 0;
     e.preventDefault();
   }, { passive: false });
   canvas.addEventListener("touchmove", (e) => {
