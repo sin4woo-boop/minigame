@@ -73,6 +73,27 @@
       <button id="restartBtn" class="hidden">다시 시작</button>
     </div>
   </div>
+  <!-- F10 Test Mode Panel -->
+  <div id="testModePanel" class="test-mode-panel hidden">
+    <div class="test-mode-inner">
+      <div class="test-mode-header">🧪 무기 테스트 모드</div>
+      <div class="test-mode-section">
+        <div class="test-section-title">기본 무기</div>
+        <div class="test-buttons" id="testBaseWeapons"></div>
+      </div>
+      <div class="test-mode-section">
+        <div class="test-section-title">진화 무기</div>
+        <div class="test-buttons" id="testEvoWeapons"></div>
+      </div>
+      <div class="test-mode-section">
+        <div class="test-buttons test-util-buttons">
+          <button class="test-btn test-util" id="testRespawnBtn">🎯 더미 리스폰</button>
+          <button class="test-btn test-ok" id="testOkBtn">▶ 테스트 시작 (닫기)</button>
+          <button class="test-btn test-exit" id="testExitBtn">✕ 테스트 종료</button>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <script src="balance.js"></script>
   <script src="game.js"></script>

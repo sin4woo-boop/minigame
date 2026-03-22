@@ -1,6 +1,35 @@
-﻿<svg xmlns="http://www.w3.org/2000/svg" width="56" height="56" viewBox="0 0 56 56">
-  <path d="M28 47 C24 43 14 38 14 27 C14 20 19 16 24 16 C26 16 28 17 29 19 C30 17 32 16 34 16 C39 16 44 20 44 27 C44 38 34 43 30 47 Z" fill="#ff7fa0" stroke="#ca4f73" stroke-width="3"/>
-  <circle cx="23" cy="24" r="3" fill="#ffd2dd"/>
-  <path d="M30 13 C33 8 38 7 41 8" stroke="#4c7f3a" stroke-width="3" stroke-linecap="round" fill="none"/>
-  <circle cx="42" cy="8" r="3" fill="#88c964"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <defs>
+    <radialGradient id="cherryGlow" cx="35%" cy="30%" r="65%">
+      <stop offset="0%" stop-color="#ff9eb8"/>
+      <stop offset="50%" stop-color="#e8344e"/>
+      <stop offset="100%" stop-color="#a01830"/>
+    </radialGradient>
+    <radialGradient id="cherry2Glow" cx="40%" cy="35%" r="60%">
+      <stop offset="0%" stop-color="#ff8eaa"/>
+      <stop offset="50%" stop-color="#dc2840"/>
+      <stop offset="100%" stop-color="#921428"/>
+    </radialGradient>
+  </defs>
+  <!-- Twin cherry bodies -->
+  <circle cx="22" cy="40" r="14" fill="url(#cherryGlow)" stroke="#8a1228" stroke-width="2"/>
+  <circle cx="42" cy="42" r="13" fill="url(#cherry2Glow)" stroke="#8a1228" stroke-width="2"/>
+  <!-- Cherry highlights -->
+  <ellipse cx="17" cy="34" rx="4" ry="5" fill="#ffccd8" opacity="0.65" transform="rotate(-15 17 34)"/>
+  <ellipse cx="38" cy="36" rx="3.5" ry="4.5" fill="#ffccd8" opacity="0.55" transform="rotate(-10 38 36)"/>
+  <!-- Stems -->
+  <path d="M22 26 C22 18 28 10 34 8" stroke="#3a7a2e" stroke-width="3" fill="none" stroke-linecap="round"/>
+  <path d="M42 29 C42 20 38 12 34 8" stroke="#3a7a2e" stroke-width="3" fill="none" stroke-linecap="round"/>
+  <!-- Leaf at junction -->
+  <path d="M34 8 C38 4 44 6 42 12 C40 8 36 7 34 8Z" fill="#6ac050" stroke="#2e6628" stroke-width="1"/>
+  <!-- Fuse / wick (bomb element) -->
+  <path d="M34 8 C36 2 32 -2 38 -4" stroke="#8a6a2e" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+  <!-- Spark at fuse tip -->
+  <circle cx="38" cy="-4" r="3.5" fill="#ffee44" opacity="0.9"/>
+  <circle cx="38" cy="-4" r="5.5" fill="#ffaa22" opacity="0.4"/>
+  <circle cx="38" cy="-4" r="2" fill="#ffffff" opacity="0.8"/>
+  <!-- Spark rays -->
+  <line x1="38" y1="-10" x2="38" y2="-12" stroke="#ffdd44" stroke-width="1.5" opacity="0.6" stroke-linecap="round"/>
+  <line x1="33" y1="-6" x2="31" y2="-8" stroke="#ffdd44" stroke-width="1.5" opacity="0.5" stroke-linecap="round"/>
+  <line x1="43" y1="-6" x2="45" y2="-8" stroke="#ffdd44" stroke-width="1.5" opacity="0.5" stroke-linecap="round"/>
 </svg>

@@ -5,23 +5,23 @@
     hard: { name: "HARD", enemyHp: 1.15, enemySpeed: 1.12, enemyDamage: 1.18, spawnRate: 1.15, eliteRate: 1.2 }
   },
   weapons: {
-    pea: { fireRate: 0.32, damage: 13, speed: 430, radius: 10, splash: 0, pierce: 0, enabled: true, sprite: "pea", label: "완두콩" },
-    spike: { fireRate: 0.48, damage: 22, speed: 520, radius: 10, splash: 0, pierce: 2, enabled: false, sprite: "spike", label: "선인장" },
-    spore: { fireRate: 1.1, damage: 16, speed: 290, radius: 11, splash: 44, pierce: 0, enabled: false, sprite: "spore", label: "버섯" },
-    corn: { fireRate: 1.8, damage: 34, speed: 280, radius: 13, splash: 72, pierce: 0, enabled: false, sprite: "corn", label: "옥수수 폭격" },
-    cherry: { fireRate: 3.2, damage: 62, speed: 250, radius: 15, splash: 118, pierce: 0, enabled: false, sprite: "cherry", label: "체리폭탄" },
-    vine: { fireRate: 1.55, damage: 30, speed: 0, radius: 18, splash: 56, pierce: 0, enabled: false, sprite: "vine", label: "지면 덩굴" }
+    pea: { fireRate: 0.28, damage: 10, speed: 480, radius: 8, splash: 0, pierce: 0, bounce: 3, bounceRange: 140, bounceDmgMul: 1.1, enabled: true, sprite: "pea", label: "완두콩" },
+    spike: { fireRate: 0.7, damage: 28, speed: 460, radius: 12, splash: 0, pierce: 5, pierceFalloff: 0, enabled: false, sprite: "spike", label: "선인장" },
+    spore: { fireRate: 2.0, damage: 6, speed: 0, radius: 14, splash: 55, pierce: 0, cloudDuration: 3.0, tickRate: 0.5, slowMul: 0.35, enabled: false, sprite: "spore", label: "버섯" },
+    corn: { fireRate: 1.2, damage: 8, speed: 380, radius: 6, splash: 0, pierce: 0, pellets: 7, spreadAngle: 0.7, enabled: false, sprite: "corn", label: "옥수수" },
+    cherry: { fireRate: 4.0, damage: 90, speed: 340, radius: 14, splash: 130, pierce: 0, fuseTime: 1.8, knockback: 80, enabled: false, sprite: "cherry", label: "체리폭탄" },
+    vine: { fireRate: 2.5, damage: 20, speed: 0, radius: 22, splash: 70, pierce: 0, snareDuration: 2.0, pullRange: 90, pullForce: 120, enabled: false, sprite: "vine", label: "덩굴" }
   },
   enemies: {
     basic: {
-      radius: { min: 17, max: 22 },
-      hp: { min: 14, max: 24, scalePerSec: 0.009 },
-      speed: { min: 45, max: 68, scalePerSec: 0.009 },
-      damage: 8
+      radius: { min: 12, max: 16 },
+      hp: { min: 8, max: 16, scalePerSec: 0.006 },
+      speed: { min: 38, max: 55, scalePerSec: 0.006 },
+      damage: 4
     },
     hammer: {
-      radius: { min: 24, max: 28 },
-      hp: { min: 52, max: 72, scalePerSec: 0.011 },
+      radius: { min: 18, max: 22 },
+      hp: { min: 42, max: 62, scalePerSec: 0.008 },
       speed: { min: 28, max: 40 },
       damage: 5,
       slamRadius: 72,
@@ -30,15 +30,15 @@
       windup: { min: 0.8, max: 1.6 }
     },
     dasher: {
-      radius: 20,
-      hp: { min: 42, max: 60, scalePerSec: 0.01 },
+      radius: 15,
+      hp: { min: 35, max: 50, scalePerSec: 0.008 },
       cooldown: { min: 1.3, max: 2.2 },
       dashSpeed: { min: 360, max: 430 },
-      dashDamage: 20
+      dashDamage: 18
     },
     bomber: {
-      radius: { min: 21, max: 24 },
-      hp: { min: 38, max: 56, scalePerSec: 0.01 },
+      radius: { min: 16, max: 19 },
+      hp: { min: 32, max: 48, scalePerSec: 0.008 },
       speed: { min: 35, max: 47, scalePerSec: 0.007 },
       damage: 7,
       throwRange: 250,
@@ -52,21 +52,47 @@
       }
     },
     boss: {
-      radius: 34,
-      hpBase: 900,
-      hpScalePerSec: 1.15,
-      speed: 34,
-      contactDamage: 10,
-      summonCooldown: 8.4,
-      summonCount: 2,
-      shockwave: { cooldown: 7.4, radius: 95, damage: 28, windup: 0.85 },
-      dash: { cooldown: 5.4, speed: 390, duration: 0.85, damage: 36, windup: 0.52 },
-      mace: { cooldown: 3.7, windup: 0.7, swingTime: 0.54, range: 290, lengthMul: 1.74, headRadius: 24, damage: 38 }
+      hammer: {
+        radius: 28,
+        hpBase: 1200,
+        hpScalePerSec: 1.2,
+        speed: 40,
+        contactDamage: 12,
+        summonCooldown: 8.5,
+        summonCount: 2,
+        slam: { cooldown: 4.5, radius: 95, damage: 32, windup: 0.8 },
+        charge: { cooldown: 6.5, speed: 420, duration: 1.0, damage: 40, windup: 0.7 },
+        earthquake: { cooldown: 11.0, count: 4, radius: 65, damage: 28, delay: 0.4, windup: 1.2 }
+      },
+      spore: {
+        radius: 25,
+        hpBase: 1500,
+        hpScalePerSec: 1.35,
+        speed: 36,
+        contactDamage: 10,
+        summonCooldown: 7.5,
+        summonCount: 3,
+        toxicBlast: { cooldown: 5.5, range: 450, radius: 85, damage: 26, duration: 4.5, windup: 0.8 },
+        sporeSplit: { cooldown: 9.0, count: 5, radius: 18, damage: 22, speed: 180, windup: 1.0 },
+        decayBreath: { cooldown: 8.0, range: 220, angle: 1.8, damagePerSec: 18, duration: 2.5, windup: 0.9 }
+      },
+      morningStar: {
+        radius: 26,
+        hpBase: 1900,
+        hpScalePerSec: 1.5,
+        speed: 44,
+        contactDamage: 14,
+        summonCooldown: 9.0,
+        summonCount: 2,
+        maceSwing: { cooldown: 3.5, windup: 0.6, swingTime: 0.45, range: 280, lengthMul: 1.74, headRadius: 26, damage: 42 },
+        chainThrow: { cooldown: 7.0, range: 380, speed: 650, width: 44, damage: 55, windup: 0.85 },
+        berserk: { threshold: 0.4, speedMul: 1.6, damageResist: 0.4, burnRadius: 35, burnDamage: 14 }
+      }
     }
   },
   wave: {
-    spawnInterval: { start: 1, decayPerSec: 0.0085, min: 0.28 },
-    extraSpawnChancePerSec: 0.009,
+    spawnInterval: { start: 0.5, decayPerSec: 0.01, min: 0.1 },
+    extraSpawnChancePerSec: 0.02,
     dasher: {
       unlockSec: 24,
       chanceBase: 0.018,
@@ -88,8 +114,7 @@
       maxConcurrent: 3
     },
     boss: {
-      firstSpawnSec: 60,
-      intervalSec: 90
+      spawnSecs: [60, 180, 300]
     }
   }
 };

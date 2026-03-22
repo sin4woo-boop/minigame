@@ -1,4 +1,4 @@
-const canvas = document.getElementById("game");
+﻿const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 
 const hpEl = document.getElementById("hp");
@@ -297,7 +297,7 @@ const state = {
   screenShake: 0,
   lastWeaponPillsKey: "",
   overlayOptions: [],
-  bossDirector: { nextSpawnTime: BALANCE.wave.boss.spawnSecs[0], spawned: 0, lastVariant: null },
+  bossDirector: { nextSpawnTime: BALANCE.wave.boss.firstSpawnSec, spawned: 0, lastVariant: null },
   difficulty: "normal",
   bossStats: { encounters: 0, defeats: 0 },
   lastBossVariantDefeated: null,
@@ -712,151 +712,6 @@ function applyEvolutionLoadoutByKey(key) {
   wb.level = MAX_WEAPON_LEVEL;
   evo.apply();
   state.evolutionsDone = { [key]: true };
-}
-
-function spawnTrainingDummies(count = 16) {
-  const cols = Math.ceil(Math.sqrt(count));
-  const rows = Math.ceil(count / cols);
-  const cellW = Math.min(100, (canvas.width - 80) / cols);
-  const cellH = Math.min(80, (canvas.height - 120) / rows);
-  const offX = (canvas.width - cols * cellW) / 2;
-  const offY = (canvas.height - rows * cellH) / 2;
-  for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < cols; c++) {
-      if (state.zombies.length - 1 >= count) break;
-      const x = offX + (c + 0.5) * cellW;
-      const y = offY + (r + 0.5) * cellH;
-      state.zombies.push({
-        type: "dummy", targetable: true,
-        x: clamp(x, 36, canvas.width - 36),
-        y: clamp(y, 36, canvas.height - 36),
-        r: rand(18, 22),
-        hp: 1200, maxHp: 1200,
-        speed: 0, damage: 0,
-      });
-    }
-  }
-}
-
-// Initialize utility buttons exactly once
-let testModeUtilsInitialized = false;
-
-function initTestModePanel() {
-  const baseContainer = document.getElementById("testBaseWeapons");
-  const evoContainer = document.getElementById("testEvoWeapons");
-  if (!baseContainer || !evoContainer) return;
-
-  // Rebuild weapon buttons only
-  baseContainer.innerHTML = "";
-  evoContainer.innerHTML = "";
-
-  // Base weapon buttons
-  const weaponIds = Object.keys(BALANCE.weapons);
-  for (const id of weaponIds) {
-    const label = BALANCE.weapons[id].label;
-    const btn = document.createElement("button");
-    btn.className = "test-btn";
-    btn.dataset.weaponId = id;
-    btn.textContent = label;
-    btn.addEventListener("click", () => activateTestWeapon(id));
-    baseContainer.appendChild(btn);
-  }
-
-  // Evolution weapon buttons
-  for (const key of TEST_EVOLUTION_KEYS) {
-    const evo = EVOLUTIONS[key];
-    if (!evo) continue;
-    const btn = document.createElement("button");
-    btn.className = "test-btn evo-btn";
-    btn.dataset.evoKey = key;
-    btn.textContent = evo.title.replace("진화: ", "");
-    btn.addEventListener("click", () => activateTestEvolution(key));
-    evoContainer.appendChild(btn);
-  }
-
-  // Initialize utility buttons once
-  if (!testModeUtilsInitialized) {
-    document.getElementById("testRespawnBtn")?.addEventListener("click", () => {
-      state.zombies = state.zombies.filter(z => z.type !== "dummy");
-      spawnTrainingDummies(16);
-    });
-    document.getElementById("testOkBtn")?.addEventListener("click", () => {
-      document.getElementById("testModePanel")?.classList.add("hidden");
-      state.lastTs = 0; // Prevent huge dt jump
-      state.paused = false;
-    });
-    document.getElementById("testExitBtn")?.addEventListener("click", () => exitTestMode());
-    testModeUtilsInitialized = true;
-  }
-}
-
-function activateTestWeapon(weaponId) {
-  setAllWeaponsBaseState();
-  state.evolutionsDone = {};
-  const w = state.player.weapons[weaponId];
-  if (!w) return;
-  w.enabled = true;
-  w.level = MAX_WEAPON_LEVEL;
-  state.zombies = state.zombies.filter(z => z.type !== "dummy");
-  state.bullets = [];
-  spawnTrainingDummies(16);
-  // Update button states
-  document.querySelectorAll("#testBaseWeapons .test-btn").forEach(b => b.classList.remove("active"));
-  document.querySelectorAll("#testEvoWeapons .test-btn").forEach(b => b.classList.remove("active"));
-  document.querySelector(`#testBaseWeapons .test-btn[data-weapon-id="${weaponId}"]`)?.classList.add("active");
-}
-
-function activateTestEvolution(key) {
-  applyEvolutionLoadoutByKey(key);
-  state.zombies = state.zombies.filter(z => z.type !== "dummy");
-  state.bullets = [];
-  spawnTrainingDummies(16);
-  // Update button states
-  document.querySelectorAll("#testBaseWeapons .test-btn").forEach(b => b.classList.remove("active"));
-  document.querySelectorAll("#testEvoWeapons .test-btn").forEach(b => b.classList.remove("active"));
-  document.querySelector(`#testEvoWeapons .test-btn[data-evo-key="${key}"]`)?.classList.add("active");
-}
-
-function toggleTestModePanel() {
-  const panel = document.getElementById("testModePanel");
-  if (!panel) return;
-  if (panel.classList.contains("hidden")) {
-    // Open panel: Pause the game in the background while picking
-    state.paused = true;
-    panel.classList.remove("hidden");
-    initTestModePanel();
-
-    // Only establish test mode basics if we weren't already in test mode
-    if (!state.testMode) {
-      state.testMode = true;
-      state.player.hp = state.player.maxHp;
-      state.zombies = [];
-      state.bullets = [];
-      state.hazards = [];
-      spawnTrainingDummies(16);
-    }
-  } else {
-    // Unpause when toggling off with F10
-    panel.classList.add("hidden");
-    state.lastTs = 0; // Prevent huge dt jump
-    state.paused = false;
-  }
-}
-
-function exitTestMode() {
-  const panel = document.getElementById("testModePanel");
-  if (panel) panel.classList.add("hidden");
-  state.testMode = false;
-  state.zombies = [];
-  state.bullets = [];
-  state.hazards = [];
-  state.effects = [];
-  setAllWeaponsBaseState();
-  state.player.weapons.pea.enabled = true;
-  state.player.weapons.pea.level = 1;
-  // Restore normal play
-  state.lastTs = 0;
-  state.paused = false;
 }
 
 function enterEvolutionTestMode(index = 0) {
@@ -1347,6 +1202,205 @@ function getWeaponImpactProfile(weaponId) {
 }
 
 
+y: target.y,
+  r: weapon.radius,
+    damage: weapon.damage,
+      splash: weapon.splash,
+        life: 0.85,
+          warmup: 0.38,
+            triggered: false,
+});
+return;
+  }
+
+const dx = target.x - p.x;
+const dy = target.y - p.y;
+const len = Math.hypot(dx, dy) || 1;
+
+if (weaponId === "corn") {
+  const speed = weapon.speed;
+  state.bullets.push({
+    kind: "cornShell",
+    weaponId,
+    x: p.x,
+    y: p.y,
+    vx: (dx / len) * speed,
+    vy: (dy / len) * speed,
+    r: weapon.radius,
+    damage: weapon.damage,
+    splash: weapon.splash,
+    life: 1.5,
+    sprite: weapon.sprite,
+    rotation: Math.atan2(dy, dx),
+    traveled: 0,
+    explodeDistance: evoMode === "thornBomb" ? clamp(len * 0.52, 110, 220) : clamp(len * 0.6, 120, 240),
+    kernelCount: evoMode === "thornBomb" ? 12 : 8,
+    evoMode,
+  });
+  return;
+}
+
+const baseBullet = {
+  kind: "bullet",
+  weaponId,
+  x: p.x,
+  y: p.y,
+  vx: (dx / len) * weapon.speed,
+  vy: (dy / len) * weapon.speed,
+  r: weapon.radius,
+  damage: weapon.damage,
+  life: 1.4,
+  sprite: weapon.sprite,
+  splash: weapon.splash,
+  pierce: weapon.pierce,
+  rotation: Math.atan2(dy, dx),
+  hitIds: new Set(),
+  toxicGarden: evoMode === "toxicGarden",
+  evoMode,
+};
+state.bullets.push(baseBullet);
+if (weaponId === "spore" && evoMode === "sporeGatling") {
+  for (const side of [-1, 1]) {
+    const ang = Math.atan2(dy, dx) + side * 0.17;
+    state.bullets.push({
+      kind: "bullet",
+      weaponId,
+      x: p.x,
+      y: p.y,
+      vx: Math.cos(ang) * weapon.speed * 1.06,
+      vy: Math.sin(ang) * weapon.speed * 1.06,
+      r: Math.max(6, weapon.radius * 0.82),
+      damage: Math.round(weapon.damage * 0.58),
+      life: 1.1,
+      sprite: weapon.sprite,
+      splash: Math.round(weapon.splash * 0.55),
+      pierce: 0,
+      rotation: ang,
+      hitIds: new Set(),
+      toxicGarden: false,
+      evoMode,
+    });
+  }
+  state.effects.push({
+    type: "sporeVolley",
+    x: p.x + (dx / len) * 14,
+    y: p.y + (dy / len) * 14,
+    life: 0.16,
+    maxLife: 0.16,
+    size: 18,
+  });
+}
+}
+
+function getWeaponEvolutionMode(weaponId, weapon = null) {
+  if (!weaponId) return "";
+  const evolvedKey = weapon?.evolvedKey || state.player.weapons[weaponId]?.evolvedKey || "";
+  if (weaponId === "spike" && evolvedKey === "pea+spike") return "spikeTurret";
+  if (weaponId === "spore" && evolvedKey === "spore+vine") return "toxicGarden";
+  if (weaponId === "spore" && evolvedKey === "pea+spore") return "sporeGatling";
+  if (weaponId === "cherry" && evolvedKey === "cherry+corn") return "supernova";
+  if (weaponId === "corn" && evolvedKey === "corn+spike") return "thornBomb";
+  return "";
+}
+
+function spikeOrbPosition(weapon, index, nowSec = state.time) {
+  const p = state.player;
+  const count = Math.max(1, weapon.orbCount || 2);
+  const radius = weapon.orbitRadius || 78;
+  const base = (Math.PI * 2 * index) / count;
+  const ang = base + nowSec * (weapon.orbitSpeed || 2.9);
+  return {
+    x: p.x + Math.cos(ang) * radius,
+    y: p.y + Math.sin(ang) * radius,
+  };
+}
+
+function getWeaponImpactProfile(weaponId) {
+  if (weaponId === "pea") return { shake: 0.7, push: 1.6, size: 8, color: "rgba(190, 255, 180, 0.78)" };
+  if (weaponId === "spike") return { shake: 1.3, push: 2.8, size: 11, color: "rgba(215, 255, 210, 0.86)" };
+  if (weaponId === "spore") return { shake: 1.05, push: 2.2, size: 10, color: "rgba(211, 164, 255, 0.82)" };
+  if (weaponId === "corn") return { shake: 1.35, push: 3.2, size: 12, color: "rgba(255, 237, 168, 0.84)" };
+  if (weaponId === "cherry") return { shake: 1.7, push: 3.8, size: 14, color: "rgba(255, 186, 205, 0.88)" };
+  if (weaponId === "vine") return { shake: 0.95, push: 2.4, size: 9, color: "rgba(186, 251, 161, 0.82)" };
+  return { shake: 0.6, push: 1.2, size: 8, color: "rgba(255, 248, 199, 0.72)" };
+}
+
+function applySpikeOrbitDamage(weapon) {
+  const orbCount = Math.max(1, weapon.orbCount || 2);
+  const orbRadius = Math.max(8, weapon.radius * 1.05);
+  const hitDamage = Math.round(weapon.damage * 0.82);
+  for (let j = state.zombies.length - 1; j >= 0; j -= 1) {
+    const z = state.zombies[j];
+    if (z.targetable === false) continue;
+    let hit = false;
+    let hitX = z.x;
+    let hitY = z.y;
+    for (let i = 0; i < orbCount; i += 1) {
+      const orb = spikeOrbPosition(weapon, i);
+      const dx = z.x - orb.x;
+      const dy = z.y - orb.y;
+      const rr = z.r + orbRadius;
+      if (dx * dx + dy * dy <= rr * rr) {
+        hit = true;
+        hitX = orb.x;
+        hitY = orb.y;
+        break;
+      }
+    }
+    if (!hit) continue;
+    state.effects.push({
+      type: "spikeHit",
+      x: hitX,
+      y: hitY,
+      life: 0.12,
+      maxLife: 0.12,
+      size: orbRadius * 1.55,
+    });
+    if (hitZombie(z, hitDamage, "spike", hitX, hitY)) state.zombies.splice(j, 1);
+  }
+}
+
+function emitSpikeTurretShots(weapon) {
+  if (weapon.evolvedKey !== "pea+spike") return;
+  if (state.zombies.length === 0) return;
+  const orbCount = Math.max(1, weapon.orbCount || 2);
+  const shots = Math.min(4, Math.max(2, Math.floor(orbCount / 3)));
+  for (let s = 0; s < shots; s += 1) {
+    const idx = Math.floor((orbCount * s) / shots);
+    const orb = spikeOrbPosition(weapon, idx);
+    const target = nearestZombie(orb.x, orb.y);
+    if (!target) continue;
+    const dx = target.x - orb.x;
+    const dy = target.y - orb.y;
+    const len = Math.hypot(dx, dy) || 1;
+    state.bullets.push({
+      kind: "bullet",
+      weaponId: "spike",
+      x: orb.x,
+      y: orb.y,
+      vx: (dx / len) * 560,
+      vy: (dy / len) * 560,
+      r: Math.max(4, weapon.radius * 0.56),
+      damage: Math.round(weapon.damage * 0.42),
+      life: 0.58,
+      sprite: "pea",
+      splash: 0,
+      pierce: 1,
+      rotation: Math.atan2(dy, dx),
+      hitIds: new Set(),
+    });
+    state.effects.push({
+      type: "turretShot",
+      x: orb.x,
+      y: orb.y,
+      life: 0.11,
+      maxLife: 0.11,
+      size: 14,
+    });
+  }
+  playWeaponSfx("pea");
+}
+
 function gainXp(value) {
   const p = state.player;
   const timeBoost = 1 + Math.min(1.05, state.time / 420);
@@ -1366,7 +1420,6 @@ function maybeEnableWeapon(name) {
   if (w.enabled || w.lockedByEvolution) return false;
   w.enabled = true;
   w.level = Math.max(1, w.level || 0);
-  w.lastFireTime = state.time; // Prevent rapid firing catch-up freeze
   return true;
 }
 
@@ -1501,186 +1554,6 @@ function applyOnHitStatuses(zombie, weaponId) {
   }
 }
 
-function clearCombatField() {
-  state.zombies = [];
-  state.bullets = [];
-  state.effects = [];
-  state.hazards = [];
-  state.xpOrbs = [];
-}
-
-function hitZombie(zombie, damage, sourceWeaponId = null, hitX = null, hitY = null) {
-  if (zombie.targetable === false) return false;
-
-  const impactX = hitX !== null ? hitX : zombie.x;
-  const impactY = hitY !== null ? hitY : zombie.y;
-
-  const resist = getResistanceMultiplier(zombie, sourceWeaponId);
-  let finalDamage = Math.max(1, Math.round(damage * resist));
-  if (zombie.type === "boss") {
-    const shieldRatio = clamp((zombie.spawnShield || 0) / 1.1, 0, 1);
-    if (shieldRatio > 0) {
-      finalDamage = Math.max(1, Math.round(finalDamage * (0.18 + (1 - shieldRatio) * 0.35)));
-      state.effects.push({
-        type: "bossShield",
-        x: zombie.x,
-        y: zombie.y,
-        life: 0.08,
-        maxLife: 0.08,
-        size: zombie.r * (1.2 + shieldRatio * 0.2),
-      });
-    }
-    const cap = Math.max(18, Math.round(zombie.maxHp * 0.12));
-    finalDamage = Math.min(finalDamage, cap);
-  }
-  applyOnHitStatuses(zombie, sourceWeaponId);
-  zombie.hurtTimer = Math.max(zombie.hurtTimer || 0, 0.12);
-  const impact = sourceWeaponId ? getWeaponImpactProfile(sourceWeaponId) : null;
-  if (impact) {
-    const pushDx = zombie.x - state.player.x;
-    const pushDy = zombie.y - state.player.y;
-    const pushLen = Math.hypot(pushDx, pushDy) || 1;
-    zombie.x += (pushDx / pushLen) * impact.push;
-    zombie.y += (pushDy / pushLen) * impact.push;
-    bumpScreenShake(impact.shake);
-  }
-  state.effects.push({
-    type: "hit",
-    x: impactX,
-    y: impactY,
-    life: 0.14,
-    maxLife: 0.14,
-    size: impact ? impact.size : 8,
-  });
-  if (impact) {
-    state.effects.push({
-      type: "impact",
-      x: impactX,
-      y: impactY,
-      life: 0.12,
-      maxLife: 0.12,
-      size: impact.size * 1.4,
-      color: impact.color,
-    });
-  }
-  const applied = Math.max(0, Math.min(zombie.hp, finalDamage));
-  if (state.settings.damageText && applied > 0.5) {
-    const rounded = Math.max(1, Math.round(applied));
-    state.effects.push({
-      type: "dmgText",
-      x: zombie.x + rand(-7, 7),
-      y: zombie.y - rand(8, 14),
-      life: 0.45,
-      maxLife: 0.45,
-      value: rounded,
-      vx: rand(-6, 6),
-      vy: -36 - rand(0, 16),
-      color: impact ? impact.color : "rgba(240, 248, 255, 0.88)",
-    });
-  }
-  zombie.hp -= finalDamage;
-  recordWeaponDamage(sourceWeaponId, applied);
-  if (zombie.hp <= 0) {
-    if (zombie.type === "dummy") {
-      zombie.hp = zombie.maxHp || 1200;
-      state.effects.push({
-        type: "banner",
-        x: canvas.width / 2,
-        y: 74,
-        life: 0.45,
-        maxLife: 0.45,
-        size: 1,
-        text: "더미 파괴!",
-        subText: "테스트용으로 즉시 재생성",
-      });
-      return false;
-    }
-    const isBoss = zombie.type === "boss";
-    if (!isBoss) playSfxEvent("killPop");
-    state.kills += 1;
-    if (isBoss) {
-      for (let i = 0; i < 12; i += 1) {
-        const a = (Math.PI * 2 * i) / 12;
-        state.xpOrbs.push({
-          x: zombie.x + Math.cos(a) * rand(6, 24),
-          y: zombie.y + Math.sin(a) * rand(6, 24),
-          r: 5,
-          value: 3,
-        });
-      }
-    } else {
-      state.xpOrbs.push({ x: zombie.x, y: zombie.y, r: 5, value: 2 + (Math.random() < 0.25 ? 1 : 0) });
-    }
-    state.effects.push({
-      type: "pop",
-      x: zombie.x,
-      y: zombie.y,
-      life: 0.28,
-      maxLife: 0.28,
-      size: isBoss ? 72 : 28,
-    });
-    if (isBoss) onBossDefeated(zombie);
-    return true;
-  }
-  return false;
-}
-
-function applySplashDamage(x, y, splash, damage, source = null, sourceWeaponId = null) {
-  if (sourceWeaponId === "cherry") {
-    state.effects.push({
-      type: "cherryBurst",
-      x,
-      y,
-      life: 0.45,
-      maxLife: 0.45,
-      size: splash,
-    });
-    playSfxEvent("bigBoom");
-  } else if (sourceWeaponId === "vine") {
-    state.effects.push({
-      type: "vineBurst",
-      x,
-      y,
-      life: 0.35,
-      maxLife: 0.35,
-      size: splash,
-    });
-  } else {
-    state.effects.push({
-      type: "boom",
-      x,
-      y,
-      life: 0.2,
-      maxLife: 0.2,
-      size: splash,
-    });
-  }
-
-  if (sourceWeaponId === "corn" && splash >= 60) {
-    playSfxEvent("bigBoom");
-  }
-  for (let j = state.zombies.length - 1; j >= 0; j -= 1) {
-    const z = state.zombies[j];
-    if (source && z === source) continue;
-    if (z.targetable === false) continue;
-    const dx = z.x - x;
-    const dy = z.y - y;
-    if (dx * dx + dy * dy <= splash * splash) {
-      if (hitZombie(z, damage, sourceWeaponId, x, y)) state.zombies.splice(j, 1);
-    }
-  }
-}
-
-function bulletVisual(sprite) {
-  if (sprite === "pea") return { glow: "rgba(80, 255, 60, 0.5)", core: "#c0ffa8", trail: "rgba(60, 230, 80, 0.45)", outer: "rgba(40, 180, 50, 0.2)" };
-  if (sprite === "spike") return { glow: "rgba(120, 255, 80, 0.48)", core: "#e8ffcc", trail: "rgba(100, 220, 60, 0.4)", outer: "rgba(80, 180, 40, 0.18)" };
-  if (sprite === "spore") return { glow: "rgba(200, 120, 255, 0.52)", core: "#e8c8ff", trail: "rgba(180, 100, 240, 0.42)", outer: "rgba(140, 60, 200, 0.2)" };
-  if (sprite === "corn") return { glow: "rgba(255, 220, 80, 0.52)", core: "#fff0a0", trail: "rgba(255, 200, 40, 0.42)", outer: "rgba(200, 160, 20, 0.18)" };
-  if (sprite === "cherry") return { glow: "rgba(255, 100, 140, 0.55)", core: "#ffd0e0", trail: "rgba(255, 80, 120, 0.45)", outer: "rgba(200, 40, 80, 0.22)" };
-  return { glow: "rgba(180, 230, 255, 0.4)", core: "#ffffff", trail: "rgba(162, 221, 255, 0.32)", outer: "rgba(120, 180, 220, 0.15)" };
-}
-
-
 function bumpScreenShake(amount) {
   if (!state.settings.screenShake) return;
   state.screenShake = Math.max(state.screenShake, amount);
@@ -1807,7 +1680,7 @@ function recordWeaponDamage(weaponId, amount) {
 const upgrades = [
   {
     title: "선인장 해금",
-    desc: "직선 관통 가시탄 발사 (5적 관통)",
+    desc: "주변을 도는 가시 오브 2개 생성",
     icon: "spike",
     weaponId: "spike",
     available: () => {
@@ -1822,7 +1695,7 @@ const upgrades = [
   },
   {
     title: "버섯 해금",
-    desc: "적 위치에 독 포자 구름 설치 (지속 데미지+둔화)",
+    desc: "느리지만 범위 피해 포자탄",
     icon: "spore",
     weaponId: "spore",
     available: () => {
@@ -1836,8 +1709,8 @@ const upgrades = [
     },
   },
   {
-    title: "옥수수 해금",
-    desc: "부채꼴 7발 팝콘 산탄 발사",
+    title: "옥수수 폭격 해금",
+    desc: "넓은 범위의 고화력 폭탄탄",
     icon: "corn",
     weaponId: "corn",
     available: () => {
@@ -1846,13 +1719,13 @@ const upgrades = [
     },
     apply: () => {
       if (!maybeEnableWeapon("corn")) {
-        state.player.weapons.corn.damage += 3;
+        state.player.weapons.corn.damage += 6;
       }
     },
   },
   {
     title: "체리폭탄 해금",
-    desc: "적에게 달라붙는 시한폭탄 (1.8초 후 대폭발)",
+    desc: "느리지만 화면이 터지는 폭발탄",
     icon: "cherry",
     weaponId: "cherry",
     available: () => {
@@ -1866,8 +1739,8 @@ const upgrades = [
     },
   },
   {
-    title: "덩굴 덫 해금",
-    desc: "바닥에 덩굴 덫 설치 (적 포박+끌어당김)",
+    title: "지면 덩굴 해금",
+    desc: "좀비 발밑에서 줄기가 솟아 광역 피해",
     icon: "vine",
     weaponId: "vine",
     available: () => {
@@ -1882,53 +1755,51 @@ const upgrades = [
   },
   {
     title: "완두콩 강화",
-    desc: "바운스 +1, 데미지 +4",
+    desc: "완두콩 데미지 +6",
     icon: "pea",
     weaponId: "pea",
     available: () => canLevelWeapon("pea"),
     apply: () => {
-      const w = state.player.weapons.pea;
-      w.bounce = (w.bounce || 3) + 1;
-      w.damage += 4;
+      state.player.weapons.pea.damage += 6;
       levelUpWeapon("pea");
     },
   },
   {
     title: "선인장 강화",
-    desc: "관통 수 +2, 데미지 +5",
+    desc: "회전 가시 오브 +1, 데미지 +3",
     icon: "spike",
     weaponId: "spike",
     available: () => canLevelWeapon("spike"),
     apply: () => {
       const w = state.player.weapons.spike;
-      w.pierce = (w.pierce || 5) + 2;
-      w.damage += 5;
+      w.orbCount = Math.min(12, (w.orbCount || 2) + 1);
+      w.damage += 3;
       levelUpWeapon("spike");
     },
   },
   {
     title: "버섯 강화",
-    desc: "구름 지속 +0.8초, 범위 +10",
+    desc: "버섯 범위 +12, 데미지 +4",
     icon: "spore",
     weaponId: "spore",
     available: () => canLevelWeapon("spore"),
     apply: () => {
       const w = state.player.weapons.spore;
-      w.cloudDuration = (w.cloudDuration || 3.0) + 0.8;
-      w.splash += 10;
+      w.splash += 12;
+      w.damage += 4;
       levelUpWeapon("spore");
     },
   },
   {
     title: "옥수수 강화",
-    desc: "산탄 수 +2, 데미지 +3",
+    desc: "옥수수 범위 +16, 데미지 +6",
     icon: "corn",
     weaponId: "corn",
     available: () => canLevelWeapon("corn"),
     apply: () => {
       const w = state.player.weapons.corn;
-      w.pellets = (w.pellets || 7) + 2;
-      w.damage += 3;
+      w.splash += 16;
+      w.damage += 6;
       levelUpWeapon("corn");
     },
   },
@@ -1946,16 +1817,15 @@ const upgrades = [
     },
   },
   {
-    title: "덩굴 강화",
-    desc: "포박 시간 +0.5초, 끌어당김 범위 +15",
+    title: "지면 덩굴 강화",
+    desc: "덩굴 데미지 +10, 범위 +14",
     icon: "vine",
     weaponId: "vine",
     available: () => canLevelWeapon("vine"),
     apply: () => {
       const w = state.player.weapons.vine;
-      w.snareDuration = (w.snareDuration || 2.0) + 0.5;
-      w.pullRange = (w.pullRange || 90) + 15;
-      w.damage += 5;
+      w.damage += 10;
+      w.splash += 14;
       levelUpWeapon("vine");
     },
   },
@@ -2131,7 +2001,6 @@ function chooseUpgrade(option) {
   if (!option) return;
   playTone(700, 0.08, 0.08, "triangle", nowAudioTime(), 620);
   option.apply(state.player);
-  state.lastTs = 0; // Prevent huge dt frame jump after unpausing
   state.paused = false;
   state.overlayOptions = [];
   hideOverlay();
@@ -2262,17 +2131,27 @@ function updateWeapons(dt) {
   const crowd = state.zombies.length;
   for (const [name, weapon] of Object.entries(p.weapons)) {
     if (!weapon.enabled) continue;
+    if (name === "spike") {
+      weapon.timer += dt;
+      while (weapon.timer >= weapon.fireRate) {
+        weapon.timer -= weapon.fireRate;
+        applySpikeOrbitDamage(weapon);
+        playWeaponSfx("spike", weapon.evolvedKey || "");
+        if (weapon.evolvedKey === "pea+spike") emitSpikeTurretShots(weapon);
+      }
+      continue;
+    }
     weapon.timer += dt;
     while (weapon.timer >= weapon.fireRate) {
       const target = nearestZombie(p.x, p.y);
       if (!target) {
+        // Keep the weapon "ready" when no target exists, instead of consuming cooldown.
         weapon.timer = weapon.fireRate;
         break;
       }
       weapon.timer -= weapon.fireRate;
       shootWeapon(weapon, target, name);
       playWeaponSfx(name, weapon.evolvedKey || "");
-      // Extra shots when crowd is big
       if (name === "pea" && crowd > 20) shootWeapon(weapon, target, name);
       if (name === "vine" && crowd > 18) {
         for (let i = 0; i < Math.min(2, state.zombies.length); i += 1) {
@@ -2307,10 +2186,7 @@ function updateZombies(dt) {
     }
     const slowMul = z.slowTime > 0 ? 1 - clamp(z.slowMul || 0, 0, 0.7) : 1;
     const moveMul = z.hurtTimer > 0 ? 0.12 : 1;
-    // Snare: complete freeze
-    z.snareTime = Math.max(0, (z.snareTime || 0) - dt);
-    const snareMul = z.snareTime > 0 ? 0 : 1;
-    const finalMoveMul = moveMul * slowMul * snareMul;
+    const finalMoveMul = moveMul * slowMul;
     const dx = p.x - z.x;
     const dy = p.y - z.y;
     const len = Math.hypot(dx, dy) || 1;
@@ -2884,278 +2760,175 @@ function applySplashDamage(x, y, splash, damage, source = null, sourceWeaponId =
 }
 
 function updateBullets(dt) {
-  const p = state.player;
   for (let i = state.bullets.length - 1; i >= 0; i -= 1) {
     const b = state.bullets[i];
-
-    // === PEA BOUNCE ===
-    if (b.kind === "peaBounce") {
-      b.x += b.vx * dt;
-      b.y += b.vy * dt;
-      b.life -= dt;
-      let removeBullet = false;
-      for (let j = state.zombies.length - 1; j >= 0; j -= 1) {
-        const z = state.zombies[j];
-        if (z.targetable === false) continue;
-        if (b.hitIds.has(z)) continue;
-        const dx = z.x - b.x;
-        const dy = z.y - b.y;
-        const rr = z.r + b.r;
-        if (dx * dx + dy * dy < rr * rr) {
-          b.hitIds.add(z);
-          if (hitZombie(z, b.damage, b.weaponId, b.x, b.y)) state.zombies.splice(j, 1);
-          // Leaf burst on hit
-          for (let pi = 0; pi < 3; pi++) {
-            state.effects.push({ type: "leafBurst", x: b.x, y: b.y, life: rand(0.3, 0.45), maxLife: 0.45, size: rand(6, 12), vx: rand(-80, 80), vy: rand(-80, 80), rot: rand(0, Math.PI * 2) });
-          }
-          // Evolution: spawn spore cloud on bounce
-          if (b.bounceSpore) {
-            state.bullets.push({ kind: "sporeZone", weaponId: "spore", x: b.x, y: b.y, r: 10, splash: 35, damage: 4, life: 1.5, maxLife: 1.5, tickRate: 0.4, tickTimer: 0, slowMul: 0.35, cloudSnare: false });
-          }
-          // Evolution: vine chain effect
-          if (b.vineChain && b.lastHit) {
-            state.effects.push({ type: "vineChainLine", x1: b.lastHit.x, y1: b.lastHit.y, x2: z.x, y2: z.y, life: 0.8, maxLife: 0.8 });
-            z.slowTime = Math.max(z.slowTime || 0, 1.5);
-            z.slowMul = Math.max(z.slowMul || 0, 0.5);
-            z.poisonTime = Math.max(z.poisonTime || 0, 1.2);
-            z.poisonTick = 0.3;
-            z.poisonDamage = Math.max(z.poisonDamage || 0, 3);
-          }
-          b.lastHit = z;
-          // Bounce to next target
-          if (b.bounce > 0) {
-            b.bounce -= 1;
-            b.damage = Math.round(b.damage * b.bounceDmgMul);
-            let bestZ = null, bestD = b.bounceRange * b.bounceRange;
-            for (const zz of state.zombies) {
-              if (zz.targetable === false || b.hitIds.has(zz)) continue;
-              const ddx = zz.x - b.x, ddy = zz.y - b.y;
-              const d2 = ddx * ddx + ddy * ddy;
-              if (d2 < bestD) { bestD = d2; bestZ = zz; }
-            }
-            if (bestZ) {
-              const ndx = bestZ.x - b.x, ndy = bestZ.y - b.y;
-              const nlen = Math.hypot(ndx, ndy) || 1;
-              const spd = Math.hypot(b.vx, b.vy);
-              b.vx = (ndx / nlen) * spd;
-              b.vy = (ndy / nlen) * spd;
-              b.rotation = Math.atan2(ndy, ndx);
-              b.life = Math.max(b.life, 0.8);
-              // Bounce trail effect
-              state.effects.push({ type: "bounceLine", x: b.x, y: b.y, tx: bestZ.x, ty: bestZ.y, life: 0.2, maxLife: 0.2 });
-            } else {
-              removeBullet = true;
-            }
-          } else {
-            removeBullet = true;
-          }
-          break;
-        }
-      }
-      if (removeBullet || b.life <= 0 || b.x < -40 || b.x > canvas.width + 40 || b.y < -40 || b.y > canvas.height + 40) {
-        state.bullets.splice(i, 1);
-      }
-      continue;
-    }
-
-    // === SPIKE PIERCE ===
-    if (b.kind === "spikePierce") {
-      b.x += b.vx * dt;
-      b.y += b.vy * dt;
-      b.life -= dt;
-      // Trail
-      if (b.trailPoints.length === 0 || Math.hypot(b.x - b.trailPoints[b.trailPoints.length - 1].x, b.y - b.trailPoints[b.trailPoints.length - 1].y) > 8) {
-        b.trailPoints.push({ x: b.x, y: b.y });
-        if (b.trailPoints.length > 12) b.trailPoints.shift();
-      }
-      for (let j = state.zombies.length - 1; j >= 0; j -= 1) {
-        const z = state.zombies[j];
-        if (z.targetable === false || b.hitIds.has(z)) continue;
-        const dx = z.x - b.x, dy = z.y - b.y, rr = z.r + b.r;
-        if (dx * dx + dy * dy < rr * rr) {
-          b.hitIds.add(z);
-          if (hitZombie(z, b.damage, b.weaponId, b.x, b.y)) state.zombies.splice(j, 1);
-          for (let pi = 0; pi < 4; pi++) {
-            state.effects.push({ type: "thornHit", x: b.x, y: b.y, life: rand(0.2, 0.35), maxLife: 0.35, size: rand(4, 9), vx: rand(-120, 120), vy: rand(-120, 120), rot: rand(0, Math.PI * 2) });
-          }
-          b.pierce -= 1;
-          if (b.pierceFalloff > 0) b.damage = Math.round(b.damage * (1 - b.pierceFalloff));
-          if (b.pierce <= 0) { state.bullets.splice(i, 1); break; }
-        }
-      }
-      if (b.life <= 0 || b.x < -40 || b.x > canvas.width + 40 || b.y < -40 || b.y > canvas.height + 40) {
-        state.bullets.splice(i, 1);
-      }
-      continue;
-    }
-
-    // === SPORE ZONE (poison cloud) ===
-    if (b.kind === "sporeZone") {
-      b.life -= dt;
-      b.tickTimer += dt;
-      while (b.tickTimer >= b.tickRate) {
-        b.tickTimer -= b.tickRate;
-        for (let j = state.zombies.length - 1; j >= 0; j -= 1) {
-          const z = state.zombies[j];
-          if (z.targetable === false) continue;
-          const dx = z.x - b.x, dy = z.y - b.y;
-          if (dx * dx + dy * dy <= b.splash * b.splash) {
-            if (hitZombie(z, b.damage, b.weaponId, b.x, b.y)) { state.zombies.splice(j, 1); continue; }
-            z.slowTime = Math.max(z.slowTime || 0, b.tickRate + 0.2);
-            z.slowMul = Math.max(z.slowMul || 0, b.slowMul);
-            z.poisonTime = Math.max(z.poisonTime || 0, 1.2);
-            z.poisonTick = 0.3;
-            z.poisonDamage = Math.max(z.poisonDamage || 0, 3);
-            // Cloud snare (evolution)
-            if (b.cloudSnare && z.type !== "boss") {
-              z.snareTime = Math.max(z.snareTime || 0, 0.6);
-            }
-          }
-        }
-      }
-      if (b.life <= 0) state.bullets.splice(i, 1);
-      continue;
-    }
-
-    // === CORN PELLET ===
-    if (b.kind === "cornPellet") {
-      b.x += b.vx * dt;
-      b.y += b.vy * dt;
-      b.life -= dt;
-      let removeBullet = false;
-      for (let j = state.zombies.length - 1; j >= 0; j -= 1) {
-        const z = state.zombies[j];
-        if (z.targetable === false || b.hitIds.has(z)) continue;
-        const dx = z.x - b.x, dy = z.y - b.y, rr = z.r + b.r;
-        if (dx * dx + dy * dy < rr * rr) {
-          b.hitIds.add(z);
-          if (hitZombie(z, b.damage, b.weaponId, b.x, b.y)) state.zombies.splice(j, 1);
-          state.effects.push({ type: "popcornBurst", x: b.x, y: b.y, life: rand(0.2, 0.4), maxLife: 0.4, size: rand(4, 7), vx: rand(-60, 60), vy: rand(-60, 60), rot: rand(0, Math.PI * 2) });
-          if (b.pierce > 0) {
-            b.pierce -= 1;
-          } else {
-            removeBullet = true;
-            break;
-          }
-        }
-      }
-      if (removeBullet || b.life <= 0 || b.x < -40 || b.x > canvas.width + 40 || b.y < -40 || b.y > canvas.height + 40) {
-        state.bullets.splice(i, 1);
-      }
-      continue;
-    }
-
-    // === STICKY BOMB (cherry) ===
-    if (b.kind === "stickyBomb") {
-      if (!b.stuck) {
-        b.x += b.vx * dt;
-        b.y += b.vy * dt;
-        for (const z of state.zombies) {
-          if (z.targetable === false) continue;
-          const dx = z.x - b.x, dy = z.y - b.y, rr = z.r + b.r;
-          if (dx * dx + dy * dy < rr * rr) {
-            b.stuck = true;
-            b.stuckTarget = z;
-            b.fuseTimer = 0;
-            break;
-          }
-        }
-        // If it travels too far without hitting, just detonate at current pos
-        b.life -= dt;
-        if (b.life <= 0) {
-          b.stuck = true;
-          b.fuseTimer = 0;
-        }
-      }
-      if (b.stuck) {
-        // Follow stuck target
-        if (b.stuckTarget && b.stuckTarget.hp > 0) {
-          b.x = b.stuckTarget.x;
-          b.y = b.stuckTarget.y;
-        }
-        b.fuseTimer += dt;
-        if (b.fuseTimer >= b.fuseTime) {
-          // EXPLODE!
-          applySplashDamage(b.x, b.y, b.splash, b.damage, null, b.weaponId);
-          bumpScreenShake(12);
-          state.effects.push({ type: "cherryBurst", x: b.x, y: b.y, life: 0.4, maxLife: 0.4, size: b.splash });
-          // Knockback
-          for (const z of state.zombies) {
-            if (z.targetable === false || z.type === "boss") continue;
-            const kdx = z.x - b.x, kdy = z.y - b.y;
-            const kd = Math.hypot(kdx, kdy) || 1;
-            if (kd <= b.splash) {
-              z.x += (kdx / kd) * b.knockback;
-              z.y += (kdy / kd) * b.knockback;
-            }
-          }
-          // Shrapnel (evolution: nuclearBomb)
-          if (b.shrapnel > 0) {
-            for (let s = 0; s < b.shrapnel; s++) {
-              const ang = (Math.PI * 2 * s) / b.shrapnel + rand(-0.1, 0.1);
-              const speed = rand(300, 420);
-              state.bullets.push({
-                kind: "spikePierce",
-                weaponId: "spike",
-                x: b.x, y: b.y,
-                vx: Math.cos(ang) * speed,
-                vy: Math.sin(ang) * speed,
-                r: 8, damage: Math.round(b.damage * 0.3),
-                life: 0.6, sprite: "spike",
-                rotation: ang, hitIds: new Set(),
-                pierce: 3, pierceFalloff: 0, trailPoints: [],
-              });
-            }
-          }
-          state.bullets.splice(i, 1);
-          continue;
-        }
-      }
-      continue;
-    }
-
-    // === VINE TRAP ===
-    if (b.kind === "vineTrap") {
+    if (b.kind === "vine") {
       b.life -= dt;
       b.warmup -= dt;
       if (!b.triggered && b.warmup <= 0) {
         b.triggered = true;
-        // Initial damage
         applySplashDamage(b.x, b.y, b.splash, b.damage, null, b.weaponId);
-        state.effects.push({ type: "vineBurst", x: b.x, y: b.y, life: 0.35, maxLife: 0.35, size: b.splash });
-      }
-      if (b.triggered) {
-        // Snare enemies standing on trap
-        for (const z of state.zombies) {
-          if (z.targetable === false || z.type === "boss") continue;
-          const dx = z.x - b.x, dy = z.y - b.y;
-          if (dx * dx + dy * dy <= b.splash * b.splash) {
-            z.snareTime = Math.max(z.snareTime || 0, 0.3);
-            b.snaredZombies.add(z);
-          }
-        }
-        // Pull nearby enemies toward trap center
-        for (const z of state.zombies) {
-          if (z.targetable === false || z.type === "boss") continue;
-          const dx = z.x - b.x, dy = z.y - b.y;
-          const d = Math.hypot(dx, dy) || 1;
-          if (d <= b.pullRange + b.splash && d > b.splash * 0.3) {
-            z.x -= (dx / d) * b.pullForce * dt;
-            z.y -= (dy / d) * b.pullForce * dt;
-          }
-        }
       }
       if (b.life <= 0) state.bullets.splice(i, 1);
       continue;
     }
-
-    // === ZOMBIE SPORE (enemy bullet) ===
-    if (b.kind === "zombieSpore") {
+    if (b.kind === "sporeCloud") {
       b.life -= dt;
-      if (b.life <= 0) { state.bullets.splice(i, 1); continue; }
+      b.pulse -= dt;
+      if (b.toxicGarden) {
+        b.spin = (b.spin || 0) + dt * 2.2;
+        if (b.pulse <= 0) {
+          applySplashDamage(b.x, b.y, b.splash, Math.round(b.damage * 0.72), null, b.weaponId);
+          state.effects.push({
+            type: "sporeBurst",
+            x: b.x,
+            y: b.y,
+            life: 0.34,
+            maxLife: 0.34,
+            size: b.splash,
+            toxicGarden: true,
+          });
+          state.effects.push({
+            type: "toxicBloom",
+            x: b.x,
+            y: b.y,
+            life: 0.42,
+            maxLife: 0.42,
+            size: b.splash * 0.95,
+          });
+          b.pulsesLeft = (b.pulsesLeft || 4) - 1;
+          b.pulse = 0.22;
+          if (b.pulsesLeft <= 0) b.life = 0;
+        }
+      } else if (!b.triggered && b.pulse <= 0) {
+        b.triggered = true;
+        applySplashDamage(b.x, b.y, b.splash, b.damage, null, b.weaponId);
+        state.effects.push({
+          type: "sporeBurst",
+          x: b.x,
+          y: b.y,
+          life: 0.36,
+          maxLife: 0.36,
+          size: b.splash,
+        });
+      }
+      if (b.life <= 0) state.bullets.splice(i, 1);
+      continue;
+    }
+    if (b.kind === "cornShell") {
       b.x += b.vx * dt;
       b.y += b.vy * dt;
-      const hdx = p.x - b.x, hdy = p.y - b.y;
+      b.life -= dt;
+      b.traveled += Math.hypot(b.vx, b.vy) * dt;
+      let shouldDetonate = b.traveled >= b.explodeDistance || b.life <= 0;
+      if (!shouldDetonate) {
+        for (const z of state.zombies) {
+          if (z.targetable === false) continue;
+          const dx = z.x - b.x;
+          const dy = z.y - b.y;
+          const rr = z.r + b.r;
+          if (dx * dx + dy * dy < rr * rr) {
+            shouldDetonate = true;
+            break;
+          }
+        }
+      }
+      if (shouldDetonate) {
+        const thornBomb = b.evoMode === "thornBomb";
+        const boomSplash = Math.round(b.splash * (thornBomb ? 1.12 : 0.88));
+        const boomDamage = Math.round(b.damage * (thornBomb ? 0.68 : 0.58));
+        applySplashDamage(b.x, b.y, boomSplash, boomDamage, null, b.weaponId);
+        state.effects.push({
+          type: "cornBurst",
+          x: b.x,
+          y: b.y,
+          life: 0.24,
+          maxLife: 0.24,
+          size: b.splash * 0.8,
+          thornBomb,
+        });
+        if (thornBomb) {
+          state.effects.push({
+            type: "thornBurst",
+            x: b.x,
+            y: b.y,
+            life: 0.3,
+            maxLife: 0.3,
+            size: b.splash * 0.95,
+          });
+        }
+        for (let s = 0; s < b.kernelCount; s += 1) {
+          const ang = (Math.PI * 2 * s) / b.kernelCount + rand(-0.18, 0.18);
+          // Popcorn kernel particles for hit effect
+          state.effects.push({
+            type: "popcornBurst",
+            x: b.x,
+            y: b.y,
+            life: rand(0.3, 0.6),
+            maxLife: 0.6,
+            size: rand(5, 9),
+            vx: Math.cos(ang) * rand(120, 250),
+            vy: Math.sin(ang) * rand(120, 250),
+            rot: rand(0, Math.PI * 2)
+          });
+
+          const speed = rand(220, 340);
+          state.bullets.push({
+            kind: "bullet",
+            weaponId: b.weaponId,
+            x: b.x,
+            y: b.y,
+            vx: Math.cos(ang) * speed,
+            vy: Math.sin(ang) * speed,
+            r: Math.max(5, b.r * 0.45),
+            damage: Math.round(b.damage * 0.36),
+            life: 0.7,
+            sprite: "corn",
+            splash: Math.round(b.splash * 0.24),
+            pierce: 0,
+            rotation: ang,
+            hitIds: new Set(),
+            evoMode: b.evoMode || "",
+          });
+        }
+        if (thornBomb) {
+          for (let s = 0; s < 8; s += 1) {
+            const ang = (Math.PI * 2 * s) / 8 + rand(-0.08, 0.08);
+            const speed = rand(270, 390);
+            state.bullets.push({
+              kind: "bullet",
+              weaponId: "spike",
+              x: b.x,
+              y: b.y,
+              vx: Math.cos(ang) * speed,
+              vy: Math.sin(ang) * speed,
+              r: Math.max(5, b.r * 0.4),
+              damage: Math.round(b.damage * 0.42),
+              life: 0.62,
+              sprite: "spike",
+              splash: 0,
+              pierce: 1,
+              rotation: ang,
+              hitIds: new Set(),
+              evoMode: "thornBomb",
+            });
+          }
+        }
+        state.bullets.splice(i, 1);
+      }
+      continue;
+    }
+    if (b.kind === "zombieSpore") {
+      b.life -= dt;
+      if (b.life <= 0) {
+        state.bullets.splice(i, 1);
+        continue;
+      }
+      b.x += b.vx * dt;
+      b.y += b.vy * dt;
+
+      const hdx = p.x - b.x;
+      const hdy = p.y - b.y;
       if (hdx * hdx + hdy * hdy <= (p.r + b.r) * (p.r + b.r)) {
         applyPlayerDamage(b.damage, b.x, b.y);
         state.effects.push({ type: "pop", x: b.x, y: b.y, life: 0.15, maxLife: 0.15, size: b.r * 2 });
@@ -3164,29 +2937,134 @@ function updateBullets(dt) {
       continue;
     }
 
-    // === Legacy bullet fallback (enemy projectiles etc.) ===
-    if (b.kind === "bullet") {
-      b.x += b.vx * dt;
-      b.y += b.vy * dt;
-      b.life -= dt;
-      if (b.isEnemyBlt) {
-        const hdx = p.x - b.x, hdy = p.y - b.y;
-        if (hdx * hdx + hdy * hdy <= (p.r + b.r) * (p.r + b.r)) {
-          applyPlayerDamage(b.damage, b.x, b.y);
-          state.effects.push({ type: "pop", x: b.x, y: b.y, life: 0.15, maxLife: 0.15, size: b.r * 2 });
-          state.bullets.splice(i, 1);
-          continue;
+    b.x += b.vx * dt;
+    b.y += b.vy * dt;
+    b.life -= dt;
+
+    let removeBullet = false;
+
+    for (let j = state.zombies.length - 1; j >= 0; j -= 1) {
+      const z = state.zombies[j];
+      if (z.targetable === false) continue;
+      if (b.hitIds.has(z)) continue;
+      const dx = z.x - b.x;
+      const dy = z.y - b.y;
+      const rr = z.r + b.r;
+      if (dx * dx + dy * dy < rr * rr) {
+        b.hitIds.add(z);
+        if (hitZombie(z, b.damage, b.weaponId, b.x, b.y)) state.zombies.splice(j, 1);
+
+        // Weapon Specific Hit Particles
+        if (b.weaponId === "pea") {
+          for (let pIdx = 0; pIdx < 3; pIdx++) {
+            state.effects.push({
+              type: "leafBurst",
+              x: b.x,
+              y: b.y,
+              life: rand(0.3, 0.45),
+              maxLife: 0.45,
+              size: rand(6, 12),
+              vx: rand(-80, 80),
+              vy: rand(-80, 80),
+              rot: rand(0, Math.PI * 2)
+            });
+          }
+        } else if (b.weaponId === "spike") {
+          for (let pIdx = 0; pIdx < 4; pIdx++) {
+            state.effects.push({
+              type: "thornHit",
+              x: b.x,
+              y: b.y,
+              life: rand(0.2, 0.35),
+              maxLife: 0.35,
+              size: rand(4, 9),
+              vx: rand(-120, 120),
+              vy: rand(-120, 120),
+              rot: rand(0, Math.PI * 2)
+            });
+          }
+        }
+
+        if (b.splash > 0) {
+          const supernova = b.evoMode === "supernova";
+          const splashScale = supernova ? 1.26 : 1;
+          const splashDamage = Math.round(b.damage * (supernova ? 0.82 : 0.65));
+          applySplashDamage(b.x, b.y, Math.round(b.splash * splashScale), splashDamage, null, b.weaponId);
+          if (supernova) {
+            state.effects.push({
+              type: "novaBurst",
+              x: b.x,
+              y: b.y,
+              life: 0.34,
+              maxLife: 0.34,
+              size: b.splash * 1.05,
+            });
+            for (let n = 0; n < 3; n += 1) {
+              const a = rand(0, Math.PI * 2);
+              const rx = b.x + Math.cos(a) * rand(26, 58);
+              const ry = b.y + Math.sin(a) * rand(26, 58);
+              applySplashDamage(rx, ry, Math.round(b.splash * 0.45), Math.round(b.damage * 0.32), null, b.weaponId);
+            }
+          }
+          if (b.weaponId === "spore") {
+            const toxicGarden = state.player.weapons.spore?.evolvedKey === "spore+vine";
+            const mainCloud = {
+              kind: "sporeCloud",
+              weaponId: "spore",
+              x: b.x,
+              y: b.y,
+              life: toxicGarden ? 1.35 : 0.9,
+              pulse: toxicGarden ? 0.16 : 0.22,
+              triggered: false,
+              splash: Math.round(b.splash * (toxicGarden ? 0.96 : 0.74)),
+              damage: Math.round(b.damage * (toxicGarden ? 0.56 : 0.4)),
+              toxicGarden,
+              evoMode: b.evoMode || "",
+            };
+            if (toxicGarden) {
+              mainCloud.pulsesLeft = 4;
+              mainCloud.spin = rand(0, Math.PI * 2);
+            }
+            state.bullets.push(mainCloud);
+            if (toxicGarden) {
+              for (let c = 0; c < 2; c += 1) {
+                const a = rand(0, Math.PI * 2);
+                state.bullets.push({
+                  kind: "sporeCloud",
+                  weaponId: "spore",
+                  x: b.x + Math.cos(a) * rand(16, 28),
+                  y: b.y + Math.sin(a) * rand(16, 28),
+                  life: 0.95,
+                  pulse: 0.2 + c * 0.04,
+                  triggered: false,
+                  splash: Math.round(b.splash * 0.58),
+                  damage: Math.round(b.damage * 0.38),
+                  toxicGarden: true,
+                  pulsesLeft: 2,
+                  spin: rand(0, Math.PI * 2),
+                });
+              }
+            }
+          }
+        }
+        if (b.pierce > 0) {
+          b.pierce -= 1;
+          b.damage = Math.round(b.damage * 0.85);
+        } else {
+          removeBullet = true;
+          break;
         }
       }
-      if (b.life <= 0 || b.x < -40 || b.x > canvas.width + 40 || b.y < -40 || b.y > canvas.height + 40) {
-        state.bullets.splice(i, 1);
-      }
-      continue;
     }
 
-    // Unknown kind - remove
-    b.life -= dt;
-    if (b.life <= 0) state.bullets.splice(i, 1);
+    if (
+      removeBullet ||
+      b.life <= 0 ||
+      b.x < -40 || b.x > canvas.width + 40 ||
+      b.y < -40 || b.y > canvas.height + 40
+    ) {
+      state.bullets.splice(i, 1);
+    }
   }
 }
 
@@ -3439,848 +3317,30 @@ function drawLightingOverlay() {
   ctx.arc(p.x, p.y, playerR, 0, Math.PI * 2);
   ctx.fill();
 
-  // New bullet rendering code
   for (const b of state.bullets) {
-    // === PEA BOUNCE ===
-    if (b.kind === "peaBounce") {
-      // Switch out of screen mode so the leaf is actually visible
-      ctx.globalCompositeOperation = "source-over";
-
-      const vLen = Math.hypot(b.vx || 0, b.vy || 0) || 1;
-      const dirX = (b.vx || 0) / vLen, dirY = (b.vy || 0) / vLen;
-      const angle = Math.atan2(b.vy, b.vx);
-
-      // Wind trail segments
-      for (let t = 3; t >= 1; t--) {
-        const tAlpha = t * 0.12;
-        const tOff = t * b.r * 2;
-        ctx.fillStyle = `rgba(80, 220, 60, ${tAlpha})`;
-        ctx.save();
-        ctx.translate(b.x - dirX * tOff, b.y - dirY * tOff);
-        ctx.rotate(angle);
-        ctx.beginPath();
-        ctx.ellipse(0, 0, b.r * (1.1 - t * 0.12), b.r * (0.45 - t * 0.06), 0, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
-      }
-
-      // Outer glow
-      ctx.fillStyle = "rgba(80, 255, 60, 0.2)";
-      ctx.beginPath();
-      ctx.arc(b.x, b.y, b.r * 2.2, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Leaf body with gradient
-      ctx.save();
-      ctx.translate(b.x, b.y);
-      ctx.rotate(angle);
-      const leafGrad = ctx.createRadialGradient(-b.r * 0.2, 0, 0, 0, 0, b.r * 1.8);
-      leafGrad.addColorStop(0, "#a8ff88");
-      leafGrad.addColorStop(0.5, "#5acc5a");
-      leafGrad.addColorStop(1, "#2a8a28");
-      ctx.fillStyle = leafGrad;
-      ctx.beginPath();
-      ctx.ellipse(0, 0, b.r * 1.8, b.r * 0.95, 0, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Leaf vein
-      ctx.strokeStyle = "#1a6a18";
-      ctx.lineWidth = 1.2;
-      ctx.beginPath(); ctx.moveTo(-b.r * 1.4, 0); ctx.lineTo(b.r * 1.4, 0); ctx.stroke();
-      // Side veins
-      ctx.strokeStyle = "rgba(30, 90, 25, 0.6)";
-      ctx.lineWidth = 0.8;
-      ctx.beginPath(); ctx.moveTo(-b.r * 0.3, 0); ctx.lineTo(-b.r * 0.8, -b.r * 0.45); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(-b.r * 0.3, 0); ctx.lineTo(-b.r * 0.8, b.r * 0.45); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(b.r * 0.3, 0); ctx.lineTo(b.r * 0.8, -b.r * 0.4); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(b.r * 0.3, 0); ctx.lineTo(b.r * 0.8, b.r * 0.4); ctx.stroke();
-
-      // Highlight
-      ctx.fillStyle = "rgba(200, 255, 180, 0.45)";
-      ctx.beginPath();
-      ctx.ellipse(-b.r * 0.35, -b.r * 0.2, b.r * 0.55, b.r * 0.3, -0.2, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.restore();
-
-      // Restore screen mode for other bullets
-      ctx.globalCompositeOperation = "screen";
-
-      if (Math.random() < 0.14) {
-        state.effects.push({ type: "leafBurst", x: b.x, y: b.y, life: rand(0.2, 0.45), maxLife: 0.45, size: rand(3, 7), vx: b.vx * 0.15 + rand(-22, 22), vy: b.vy * 0.15 + rand(-22, 22), rot: rand(0, Math.PI * 2) });
-      }
-      continue;
-    }
-
-    // === SPIKE PIERCE ===
-    if (b.kind === "spikePierce") {
-      const rot = b.rotation || state.time * 12;
-      const spineCount = 8;
-
-      // Trail afterimage with green tint
-      if (b.trailPoints && b.trailPoints.length > 1) {
-        ctx.strokeStyle = "rgba(100, 220, 60, 0.2)";
-        ctx.lineWidth = b.r * 1.6; ctx.lineCap = "round";
-        ctx.beginPath();
-        ctx.moveTo(b.trailPoints[0].x, b.trailPoints[0].y);
-        for (let t = 1; t < b.trailPoints.length; t++) {
-          ctx.lineTo(b.trailPoints[t].x, b.trailPoints[t].y);
-        }
-        ctx.stroke();
-      }
-
-      // Outer needle glow
-      ctx.fillStyle = "rgba(120, 255, 80, 0.12)";
-      ctx.beginPath();
-      ctx.arc(b.x, b.y, b.r * 2.2, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Cactus body with gradient
-      const cactusGrad = ctx.createRadialGradient(b.x - b.r * 0.15, b.y - b.r * 0.15, 0, b.x, b.y, b.r * 1.1);
-      cactusGrad.addColorStop(0, "#b8e888");
-      cactusGrad.addColorStop(0.6, "#6aaa44");
-      cactusGrad.addColorStop(1, "#3a7a28");
-      ctx.fillStyle = cactusGrad;
-      ctx.beginPath();
-      ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
-      ctx.fill();
-
-      // 8 rotating sharp needles
-      for (let t = 0; t < spineCount; t++) {
-        const a = rot + (Math.PI * 2 / spineCount) * t;
-        const baseX = b.x + Math.cos(a) * b.r * 0.55;
-        const baseY = b.y + Math.sin(a) * b.r * 0.55;
-        const tipX = b.x + Math.cos(a) * (b.r + 6);
-        const tipY = b.y + Math.sin(a) * (b.r + 6);
-        ctx.strokeStyle = "#e8eaa0";
-        ctx.lineWidth = 1.8;
-        ctx.lineCap = "round";
-        ctx.beginPath();
-        ctx.moveTo(baseX, baseY);
-        ctx.lineTo(tipX, tipY);
-        ctx.stroke();
-        ctx.fillStyle = "rgba(255, 255, 220, 0.5)";
-        ctx.beginPath();
-        ctx.arc(tipX, tipY, 1.3, 0, Math.PI * 2);
-        ctx.fill();
-      }
-
-      // Inner cross
-      ctx.strokeStyle = "rgba(200, 230, 150, 0.35)";
-      ctx.lineWidth = 0.8;
-      ctx.beginPath(); ctx.moveTo(b.x - b.r * 0.4, b.y); ctx.lineTo(b.x + b.r * 0.4, b.y); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(b.x, b.y - b.r * 0.4); ctx.lineTo(b.x, b.y + b.r * 0.4); ctx.stroke();
-
-      // Highlight
-      ctx.fillStyle = "rgba(200, 255, 160, 0.3)";
-      ctx.beginPath();
-      ctx.arc(b.x - b.r * 0.2, b.y - b.r * 0.2, b.r * 0.35, 0, Math.PI * 2);
-      ctx.fill();
-      continue;
-    }
-
-    // === SPORE ZONE ===
-    if (b.kind === "sporeZone") {
-      const alpha = clamp(b.life / (b.maxLife || 3), 0, 1);
-      const r = b.splash * (0.8 + Math.sin(state.time * 3 + b.x * 0.01) * 0.1);
-      const grad = ctx.createRadialGradient(b.x, b.y, r * 0.15, b.x, b.y, r);
-      if (b.cloudSnare) {
-        grad.addColorStop(0, `rgba(180, 255, 145, ${0.22 + alpha * 0.18})`);
-        grad.addColorStop(0.5, `rgba(150, 100, 200, ${0.18 + alpha * 0.2})`);
-        grad.addColorStop(1, "rgba(70, 160, 80, 0.04)");
-      } else {
-        grad.addColorStop(0, `rgba(180, 130, 230, ${0.16 + alpha * 0.18})`);
-        grad.addColorStop(0.5, `rgba(150, 100, 200, ${0.12 + alpha * 0.16})`);
-        grad.addColorStop(1, "rgba(100, 60, 150, 0.03)");
-      }
-      ctx.fillStyle = grad; ctx.beginPath();
-      ctx.arc(b.x, b.y, r, 0, Math.PI * 2); ctx.fill();
-      // Spore particles
-      for (let p = 0; p < 7; p++) {
-        const a = (Math.PI * 2 * p) / 7 + state.time * 1.2;
-        const pr = r * (0.3 + (p % 3) * 0.15);
-        const px = b.x + Math.cos(a) * pr, py = b.y + Math.sin(a) * pr;
-        ctx.fillStyle = b.cloudSnare
-          ? `rgba(188, 255, 161, ${0.18 + alpha * 0.22})`
-          : `rgba(206, 168, 255, ${0.18 + alpha * 0.22})`;
-        ctx.beginPath(); ctx.arc(px, py, 2.5 + (p % 2), 0, Math.PI * 2); ctx.fill();
-      }
-      // Snare vines
-      if (b.cloudSnare) {
-        ctx.strokeStyle = `rgba(100, 200, 80, ${0.3 + alpha * 0.3})`;
-        ctx.lineWidth = 2;
-        for (let v = 0; v < 5; v++) {
-          const a = (Math.PI * 2 * v) / 5 + state.time * 0.5;
-          ctx.beginPath(); ctx.moveTo(b.x, b.y);
-          ctx.lineTo(b.x + Math.cos(a) * r * 0.7, b.y + Math.sin(a) * r * 0.7);
-          ctx.stroke();
-        }
-      }
-      continue;
-    }
-
-    // === CORN PELLET ===
-    if (b.kind === "cornPellet") {
-      const vLen = Math.hypot(b.vx || 0, b.vy || 0) || 1;
-      const dirX = (b.vx || 0) / vLen, dirY = (b.vy || 0) / vLen;
-      const thornBomb = b.evoMode === "thornBomb";
-
-      // Golden trail
-      ctx.strokeStyle = thornBomb ? "rgba(160, 240, 130, 0.3)" : "rgba(255, 210, 80, 0.35)";
-      ctx.lineWidth = b.r * 1.8; ctx.lineCap = "round";
-      ctx.beginPath();
-      ctx.moveTo(b.x - dirX * b.r * 4, b.y - dirY * b.r * 4);
-      ctx.lineTo(b.x, b.y); ctx.stroke();
-
-      // Outer glow
-      ctx.fillStyle = thornBomb ? "rgba(160, 240, 130, 0.12)" : "rgba(255, 210, 80, 0.14)";
-      ctx.beginPath();
-      ctx.arc(b.x, b.y, b.r * 2, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Kernel body with gradient
-      const kernelGrad = ctx.createRadialGradient(b.x - b.r * 0.2, b.y - b.r * 0.2, 0, b.x, b.y, b.r * 1.2);
-      kernelGrad.addColorStop(0, thornBomb ? "#d0ff88" : "#fff5a0");
-      kernelGrad.addColorStop(0.5, thornBomb ? "#88cc44" : "#ffd84a");
-      kernelGrad.addColorStop(1, thornBomb ? "#448822" : "#d4950a");
-      ctx.fillStyle = kernelGrad;
-      ctx.beginPath();
-      ctx.arc(b.x, b.y, b.r * 1.15, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Kernel groove line
-      ctx.strokeStyle = thornBomb ? "rgba(60, 100, 30, 0.3)" : "rgba(180, 120, 20, 0.3)";
-      ctx.lineWidth = 0.8;
-      ctx.beginPath();
-      ctx.moveTo(b.x - dirX * b.r * 0.8, b.y - dirY * b.r * 0.8);
-      ctx.lineTo(b.x + dirX * b.r * 0.8, b.y + dirY * b.r * 0.8);
-      ctx.stroke();
-
-      // Highlight
-      ctx.fillStyle = thornBomb ? "rgba(220, 255, 200, 0.5)" : "rgba(255, 250, 200, 0.5)";
-      ctx.beginPath();
-      ctx.arc(b.x - b.r * 0.25, b.y - b.r * 0.25, b.r * 0.4, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Thorn spines for evo mode
-      if (thornBomb) {
-        ctx.strokeStyle = "rgba(200, 255, 180, 0.5)";
-        ctx.lineWidth = 1.5;
-        for (let s = 0; s < 6; s++) {
-          const a = (Math.PI * 2 * s) / 6 + state.time * 0.08;
-          ctx.beginPath();
-          ctx.moveTo(b.x + Math.cos(a) * b.r * 0.7, b.y + Math.sin(a) * b.r * 0.7);
-          ctx.lineTo(b.x + Math.cos(a) * b.r * 1.8, b.y + Math.sin(a) * b.r * 1.8);
-          ctx.stroke();
-        }
-      }
-
-      // Popcorn burst spark (occasional)
-      if (Math.random() < 0.12) {
-        state.effects.push({
-          type: "boom", x: b.x + rand(-b.r, b.r), y: b.y + rand(-b.r, b.r),
-          life: rand(0.1, 0.25), maxLife: 0.25, size: rand(3, 6),
-        });
-      }
-      continue;
-    }
-
-    // === STICKY BOMB (Cherry) ===
-    if (b.kind === "stickyBomb") {
-      const fuseRatio = b.stuck ? clamp(b.fuseTimer / b.fuseTime, 0, 1) : 0;
-      const pulse = 0.85 + Math.sin(state.time * (10 + fuseRatio * 30)) * 0.15;
-      const bombR = b.r * pulse;
-
-      // Outer danger glow (grows with fuse)
-      if (fuseRatio > 0.3) {
-        ctx.fillStyle = `rgba(255, 80, 80, ${0.06 + fuseRatio * 0.12})`;
-        ctx.beginPath();
-        ctx.arc(b.x, b.y, bombR * (2 + fuseRatio * 1.5), 0, Math.PI * 2);
-        ctx.fill();
-      }
-
-      // Twin cherry bodies
-      const cherryOffset = bombR * 0.35;
-      // Left cherry
-      const lGrad = ctx.createRadialGradient(b.x - cherryOffset - bombR * 0.15, b.y - bombR * 0.1, 0, b.x - cherryOffset, b.y, bombR * 0.75);
-      lGrad.addColorStop(0, "#ff9eb8");
-      lGrad.addColorStop(0.5, `rgb(${220 + fuseRatio * 35}, ${40 - fuseRatio * 20}, ${60 - fuseRatio * 30})`);
-      lGrad.addColorStop(1, "#a01830");
-      ctx.fillStyle = lGrad;
-      ctx.beginPath();
-      ctx.arc(b.x - cherryOffset, b.y, bombR * 0.72, 0, Math.PI * 2);
-      ctx.fill();
-      // Right cherry
-      const rGrad = ctx.createRadialGradient(b.x + cherryOffset - bombR * 0.1, b.y + bombR * 0.05 - bombR * 0.1, 0, b.x + cherryOffset, b.y + bombR * 0.05, bombR * 0.68);
-      rGrad.addColorStop(0, "#ff8eaa");
-      rGrad.addColorStop(0.5, `rgb(${210 + fuseRatio * 40}, ${35 - fuseRatio * 15}, ${50 - fuseRatio * 25})`);
-      rGrad.addColorStop(1, "#921428");
-      ctx.fillStyle = rGrad;
-      ctx.beginPath();
-      ctx.arc(b.x + cherryOffset, b.y + bombR * 0.05, bombR * 0.68, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Cherry highlights
-      ctx.fillStyle = "rgba(255, 200, 220, 0.5)";
-      ctx.beginPath();
-      ctx.arc(b.x - cherryOffset - bombR * 0.15, b.y - bombR * 0.15, bombR * 0.2, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = "rgba(255, 200, 220, 0.4)";
-      ctx.beginPath();
-      ctx.arc(b.x + cherryOffset - bombR * 0.1, b.y + bombR * 0.05 - bombR * 0.15, bombR * 0.16, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Stems meeting at top
-      ctx.strokeStyle = "#3a7a2e";
-      ctx.lineWidth = 2;
-      ctx.lineCap = "round";
-      ctx.beginPath();
-      ctx.moveTo(b.x - cherryOffset, b.y - bombR * 0.65);
-      ctx.quadraticCurveTo(b.x - bombR * 0.1, b.y - bombR * 1.4, b.x, b.y - bombR * 1.1);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.moveTo(b.x + cherryOffset, b.y + bombR * 0.05 - bombR * 0.62);
-      ctx.quadraticCurveTo(b.x + bombR * 0.1, b.y - bombR * 1.3, b.x, b.y - bombR * 1.1);
-      ctx.stroke();
-
-      // Leaf at junction
-      ctx.fillStyle = "#6ac050";
-      ctx.beginPath();
-      ctx.ellipse(b.x + bombR * 0.3, b.y - bombR * 1.2, bombR * 0.35, bombR * 0.18, 0.3, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Fuse (bomb wick)
-      ctx.strokeStyle = "#8a6a2e";
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(b.x, b.y - bombR * 1.1);
-      ctx.quadraticCurveTo(b.x + bombR * 0.3, b.y - bombR * 1.6, b.x + bombR * 0.5, b.y - bombR * 1.5);
-      ctx.stroke();
-
-      // Fuse spark
-      if (b.stuck) {
-        const sparkX = b.x + bombR * 0.5;
-        const sparkY = b.y - bombR * 1.5;
-        const flash = Math.floor(state.time * (8 + fuseRatio * 25)) % 2 === 0;
-
-        // Spark glow
-        ctx.fillStyle = `rgba(255, 238, 68, ${0.5 + fuseRatio * 0.5})`;
-        ctx.beginPath();
-        ctx.arc(sparkX, sparkY, 3 + fuseRatio * 2, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = `rgba(255, 170, 34, ${0.3 + fuseRatio * 0.3})`;
-        ctx.beginPath();
-        ctx.arc(sparkX, sparkY, 5 + fuseRatio * 3, 0, Math.PI * 2);
-        ctx.fill();
-        if (flash) {
-          ctx.fillStyle = "#ffffff";
-          ctx.beginPath();
-          ctx.arc(sparkX, sparkY, 2, 0, Math.PI * 2);
-          ctx.fill();
-        }
-
-        // Warning circle
-        ctx.strokeStyle = `rgba(255, 80, 80, ${0.15 + fuseRatio * 0.5})`;
-        ctx.lineWidth = 1.5 + fuseRatio; ctx.setLineDash([5, 4]);
-        ctx.beginPath();
-        ctx.arc(b.x, b.y, b.splash * (0.4 + fuseRatio * 0.6), 0, Math.PI * 2);
-        ctx.stroke(); ctx.setLineDash([]);
-      }
-      continue;
-    }
-
-    // === VINE TRAP ===
-    if (b.kind === "vineTrap") {
-      const alpha = clamp(b.life / (b.maxLife || 3), 0, 1);
-      const warmT = clamp((0.35 - b.warmup) / 0.35, 0, 1);
-      const r = b.splash * (0.3 + warmT * 0.7);
-      // Ground circle
-      ctx.fillStyle = `rgba(80, 160, 60, ${0.15 + alpha * 0.15})`;
-      ctx.beginPath(); ctx.arc(b.x, b.y, r, 0, Math.PI * 2); ctx.fill();
-      ctx.strokeStyle = `rgba(100, 200, 80, ${0.3 + alpha * 0.4})`;
-      ctx.lineWidth = 2.5;
-      ctx.beginPath(); ctx.arc(b.x, b.y, r * 0.92, 0, Math.PI * 2); ctx.stroke();
-      // Vine tendrils
-      if (b.triggered) {
-        ctx.strokeStyle = `rgba(60, 140, 40, ${0.5 + alpha * 0.4})`;
-        ctx.lineWidth = 3; ctx.lineCap = "round"; ctx.lineJoin = "round";
-        for (let v = 0; v < 6; v++) {
-          const a = (Math.PI * 2 * v) / 6 + state.time * 0.3;
-          const vr = r * (0.4 + Math.sin(state.time * 2 + v) * 0.2);
-          ctx.beginPath(); ctx.moveTo(b.x, b.y);
-          ctx.quadraticCurveTo(
-            b.x + Math.cos(a + 0.3) * vr * 0.6, b.y + Math.sin(a + 0.3) * vr * 0.6,
-            b.x + Math.cos(a) * vr, b.y + Math.sin(a) * vr
-          );
-          ctx.stroke();
-        }
-      }
-      continue;
-    }
-
-    // === ENEMY BULLETS / LEGACY ===
-    if (b.kind === "zombieSpore" || b.kind === "bullet") {
-      const look = bulletVisual(b.sprite || "pea");
-      ctx.fillStyle = look.glow; ctx.beginPath();
-      ctx.arc(b.x, b.y, b.r * 1.3, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = look.core; ctx.beginPath();
-      ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2); ctx.fill();
-      continue;
-    }
-  }
-
-  for (const b of state.bullets) {
-    if (b.kind === "vineTrap") {
-      const t = clamp((0.38 - (b.warmup || 0)) / 0.38, 0, 1);
-      const ringR = b.splash * (0.22 + t * 0.82);
-      ctx.fillStyle = `rgba(145, 234, 96, ${0.22 + t * 0.18})`;
-      ctx.beginPath();
-      ctx.arc(b.x, b.y, ringR, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.strokeStyle = `rgba(233, 255, 189, ${0.4 + t * 0.36})`;
-      ctx.lineWidth = 2.4;
-      ctx.beginPath();
-      ctx.arc(b.x, b.y, ringR * 0.92, 0, Math.PI * 2);
-      ctx.stroke();
-
-      const stemH = 10 + 48 * t;
-      ctx.strokeStyle = `rgba(56, 125, 44, ${0.6 + t * 0.35})`;
-      ctx.lineWidth = 6;
-      ctx.beginPath();
-      ctx.moveTo(b.x, b.y + 10);
-      ctx.lineTo(b.x, b.y + 10 - stemH);
-      ctx.stroke();
-
-      const topY = b.y + 10 - stemH;
-      ctx.fillStyle = `rgba(76, 176, 64, ${0.5 + t * 0.4})`;
-      ctx.beginPath();
-      ctx.ellipse(b.x - 10, topY + 10, 10, 5.5, -0.56, 0, Math.PI * 2);
-      ctx.ellipse(b.x + 10, topY + 6, 10, 5.5, 0.56, 0, Math.PI * 2);
-      ctx.ellipse(b.x - 6, topY + 20, 8, 4.2, -0.38, 0, Math.PI * 2);
-      ctx.ellipse(b.x + 7, topY + 18, 8, 4.2, 0.38, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Tomato fruits on the vine head for high readability.
-      const wobble = Math.sin(state.time * 11 + b.x * 0.02) * 1.1;
-      const fruits = [
-        { x: b.x - 12 + wobble, y: topY + 3, r: 5.8 },
-        { x: b.x + 12 - wobble, y: topY + 1, r: 5.8 },
-        { x: b.x + wobble * 0.5, y: topY - 4, r: 6.5 },
-      ];
-      for (const f of fruits) {
-        ctx.fillStyle = `rgba(231, 72, 68, ${0.65 + t * 0.3})`;
-        ctx.beginPath();
-        ctx.arc(f.x, f.y, f.r, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = `rgba(255, 214, 214, ${0.5 + t * 0.22})`;
-        ctx.beginPath();
-        ctx.arc(f.x - f.r * 0.25, f.y - f.r * 0.3, f.r * 0.34, 0, Math.PI * 2);
-        ctx.fill();
-      }
-      continue;
-    }
-    if (b.kind === "cornPellet") {
-      const vLen = Math.hypot(b.vx || 0, b.vy || 0) || 1;
-      const dirX = (b.vx || 0) / vLen;
-      const dirY = (b.vy || 0) / vLen;
-      const thornBomb = b.evoMode === "thornBomb";
-
-      // Projectile Trail
-      ctx.strokeStyle = thornBomb ? "rgba(188, 246, 174, 0.25)" : "rgba(255, 233, 167, 0.25)";
-      ctx.lineWidth = b.r * 1.8;
-      ctx.lineCap = "round";
-      ctx.beginPath();
-      ctx.moveTo(b.x - dirX * (b.r * 6), b.y - dirY * (b.r * 6));
-      ctx.lineTo(b.x, b.y);
-      ctx.stroke();
-
-      ctx.strokeStyle = thornBomb ? "rgba(198, 255, 188, 0.52)" : "rgba(255, 223, 135, 0.45)";
-      ctx.lineWidth = Math.max(3, b.r * 0.9);
-      ctx.lineCap = "round";
-      ctx.beginPath();
-      ctx.moveTo(b.x - dirX * (b.r * 2.8), b.y - dirY * (b.r * 2.8));
-      ctx.lineTo(b.x, b.y);
-      ctx.stroke();
-
-      ctx.fillStyle = thornBomb ? "rgba(188, 246, 174, 0.55)" : "rgba(255, 233, 167, 0.5)";
-      ctx.beginPath();
-      ctx.arc(b.x, b.y, b.r * 1.35, 0, Math.PI * 2);
-      ctx.fill();
-      if (thornBomb) {
-        ctx.strokeStyle = "rgba(236, 255, 225, 0.56)";
-        ctx.lineWidth = 2;
-        for (let s = 0; s < 6; s += 1) {
-          const a = (Math.PI * 2 * s) / 6 + state.time * 0.08;
-          const r1 = b.r * 0.7;
-          const r2 = b.r * 1.85;
-          ctx.beginPath();
-          ctx.moveTo(b.x + Math.cos(a) * r1, b.y + Math.sin(a) * r1);
-          ctx.lineTo(b.x + Math.cos(a) * r2, b.y + Math.sin(a) * r2);
-          ctx.stroke();
-        }
-      }
-      if (images.corn) {
-        drawSprite(images.corn, b.x, b.y, b.r * 2.5, b.r * 2.5, b.rotation + state.time * 9);
-      } else {
-        ctx.fillStyle = "#ffd768";
-        ctx.beginPath();
-        ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
-        ctx.fill();
-      }
-      continue;
-    }
-    if (b.kind === "sporeZone") {
-      const cloudAlpha = clamp(b.life / 0.9, 0, 1);
-      const cloudR = b.splash * (0.72 + (1 - cloudAlpha) * 0.35);
-      if (b.toxicGarden) {
-        const spin = b.spin || 0;
-        const grad = ctx.createRadialGradient(b.x, b.y, cloudR * 0.2, b.x, b.y, cloudR);
-        grad.addColorStop(0, `rgba(201, 255, 164, ${0.2 + cloudAlpha * 0.14})`);
-        grad.addColorStop(0.55, `rgba(166, 110, 212, ${0.2 + cloudAlpha * 0.2})`);
-        grad.addColorStop(1, "rgba(78, 184, 92, 0.06)");
-        ctx.fillStyle = grad;
-        ctx.beginPath();
-        ctx.arc(b.x, b.y, cloudR, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.strokeStyle = `rgba(215, 255, 198, ${0.18 + cloudAlpha * 0.34})`;
-        ctx.lineWidth = 2;
-        for (let v = 0; v < 4; v += 1) {
-          const ang = spin + (Math.PI * 2 * v) / 4;
-          ctx.beginPath();
-          ctx.ellipse(
-            b.x + Math.cos(ang) * cloudR * 0.22,
-            b.y + Math.sin(ang) * cloudR * 0.22,
-            cloudR * 0.52,
-            cloudR * 0.2,
-            ang,
-            0,
-            Math.PI * 2
-          );
-          ctx.stroke();
-        }
-        for (let p = 0; p < 11; p += 1) {
-          const a = (Math.PI * 2 * p) / 11 + state.time * 1.2 + spin * 0.4;
-          const r = cloudR * (0.34 + (p % 4) * 0.1);
-          const px = b.x + Math.cos(a) * r;
-          const py = b.y + Math.sin(a) * r;
-          ctx.fillStyle = p % 2 === 0
-            ? `rgba(188, 255, 161, ${0.16 + cloudAlpha * 0.24})`
-            : `rgba(213, 170, 255, ${0.14 + cloudAlpha * 0.22})`;
-          ctx.beginPath();
-          ctx.arc(px, py, 2.5 + (p % 3), 0, Math.PI * 2);
-          ctx.fill();
-        }
-      } else {
-        ctx.fillStyle = `rgba(160, 118, 205, ${0.14 + cloudAlpha * 0.18})`;
-        ctx.beginPath();
-        ctx.arc(b.x, b.y, cloudR, 0, Math.PI * 2);
-        ctx.fill();
-        for (let p = 0; p < 7; p += 1) {
-          const a = (Math.PI * 2 * p) / 7 + state.time * 0.9;
-          const r = cloudR * (0.35 + (p % 3) * 0.12);
-          const px = b.x + Math.cos(a) * r;
-          const py = b.y + Math.sin(a) * r;
-          ctx.fillStyle = `rgba(206, 168, 255, ${0.18 + cloudAlpha * 0.22})`;
-          ctx.beginPath();
-          ctx.arc(px, py, 3.1 + (p % 2), 0, Math.PI * 2);
-          ctx.fill();
-        }
-      }
-      continue;
-    }
-    if (b.kind === "stickyBomb") {
-      const fuseRatio = clamp((b.fuseTimer || 0) / (b.fuseTime || 1.8), 0, 1);
-      const pulse = 0.82 + Math.sin(state.time * (18 + fuseRatio * 30)) * 0.18;
-      ctx.fillStyle = b.stuck ? `rgba(255, 60, 60, ${0.4 + fuseRatio * 0.5})` : `rgba(255, 100, 100, 0.4)`;
-      ctx.beginPath();
-      ctx.arc(b.x, b.y, b.r * (1 + pulse * 0.4), 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = "#ff2222";
-      ctx.beginPath();
-      ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.strokeStyle = "#ffeeee";
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      ctx.arc(b.x - b.r * 0.3, b.y - b.r * 0.3, b.r * 0.25, 0, Math.PI * 2);
-      ctx.stroke();
-      if (b.stuck) { // Draw a short lit fuse if stuck
-        ctx.strokeStyle = "#dd9944";
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(b.x + b.r * 0.5, b.y - b.r * 0.8);
-        ctx.lineTo(b.x + b.r * (0.5 + pulse * 0.8), b.y - b.r * (0.8 + pulse * 0.8));
-        ctx.stroke();
-      }
-      continue;
-    }
-
-    const img = images[b.sprite];
-    const look = bulletVisual(b.sprite);
-    const vLen = Math.hypot(b.vx || 0, b.vy || 0) || 1;
-    const dirX = (b.vx || 0) / vLen;
-    const dirY = (b.vy || 0) / vLen;
-
-    // === PER-WEAPON VISUAL RENDERING (UPGRADED) ===
-    if (b.weaponId === "pea") {
-      // ---- PEA: Glowing leaf projectile with wind trail ----
-      const angle = Math.atan2(b.vy, b.vx);
-      const trailLen = Math.min(b.r * 8, vLen * 0.12);
-
-      // Wind trail - multiple fading segments
-      for (let t = 3; t >= 1; t--) {
-        const tAlpha = t * 0.12;
-        const tOff = t * trailLen * 0.3;
-        ctx.fillStyle = `rgba(80, 220, 60, ${tAlpha})`;
-        ctx.save();
-        ctx.translate(b.x - dirX * tOff, b.y - dirY * tOff);
-        ctx.rotate(angle);
-        ctx.beginPath();
-        ctx.ellipse(0, 0, b.r * (1.2 - t * 0.15), b.r * (0.5 - t * 0.08), 0, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
-      }
-
-      // Outer glow
-      ctx.fillStyle = "rgba(80, 255, 60, 0.18)";
-      ctx.beginPath();
-      ctx.arc(b.x, b.y, b.r * 2.2, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Main leaf body with gradient
-      ctx.save();
-      ctx.translate(b.x, b.y);
-      ctx.rotate(angle);
-      const leafGrad = ctx.createRadialGradient(-b.r * 0.3, 0, 0, 0, 0, b.r * 1.6);
-      leafGrad.addColorStop(0, "#a8ff88");
-      leafGrad.addColorStop(0.5, "#5acc5a");
-      leafGrad.addColorStop(1, "#2a8a28");
-      ctx.fillStyle = leafGrad;
-      ctx.beginPath();
-      ctx.ellipse(0, 0, b.r * 1.6, b.r * 0.85, 0, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Leaf vein (center line)
-      ctx.strokeStyle = "#1a6a18";
-      ctx.lineWidth = 1.2;
-      ctx.beginPath();
-      ctx.moveTo(-b.r * 1.3, 0);
-      ctx.lineTo(b.r * 1.3, 0);
-      ctx.stroke();
-
-      // Side veins
-      ctx.strokeStyle = "rgba(30, 90, 25, 0.6)";
-      ctx.lineWidth = 0.8;
-      ctx.beginPath(); ctx.moveTo(-b.r * 0.3, 0); ctx.lineTo(-b.r * 0.9, -b.r * 0.5); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(-b.r * 0.3, 0); ctx.lineTo(-b.r * 0.9, b.r * 0.5); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(b.r * 0.3, 0); ctx.lineTo(b.r * 0.9, -b.r * 0.4); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(b.r * 0.3, 0); ctx.lineTo(b.r * 0.9, b.r * 0.4); ctx.stroke();
-
-      // Highlight on leaf
-      ctx.fillStyle = "rgba(200, 255, 180, 0.45)";
-      ctx.beginPath();
-      ctx.ellipse(-b.r * 0.4, -b.r * 0.2, b.r * 0.6, b.r * 0.3, -0.2, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.restore();
-
-      // Leaf particle emission
-      if (Math.random() < 0.18) {
-        state.effects.push({
-          type: "leafBurst", x: b.x, y: b.y,
-          life: rand(0.25, 0.5), maxLife: 0.5,
-          size: rand(3, 7),
-          vx: b.vx * 0.15 + rand(-25, 25),
-          vy: b.vy * 0.15 + rand(-25, 25),
-          rot: rand(0, Math.PI * 2)
-        });
-      }
-
+    let radius = 0;
+    let color = "";
+    if (b.sprite === "spore" || b.kind === "sporeCloud") {
+      radius = (b.splash || b.r * 4 || 22) * 0.45;
+      color = b.toxicGarden ? "rgba(178, 255, 166, 0.2)" : "rgba(200, 149, 255, 0.18)";
+    } else if (b.weaponId === "cherry" || b.evoMode === "supernova") {
+      radius = Math.max(24, (b.r || 10) * 3.5);
+      color = "rgba(255, 188, 136, 0.2)";
+    } else if (b.weaponId === "corn" || b.evoMode === "thornBomb") {
+      radius = Math.max(20, (b.r || 10) * 3.1);
+      color = b.evoMode === "thornBomb" ? "rgba(196, 255, 181, 0.17)" : "rgba(255, 226, 158, 0.17)";
     } else if (b.weaponId === "spike") {
-      // ---- SPIKE: Spinning cactus with sharp needles ----
-      const rot = b.rotation || state.time * 12;
-      const spineCount = 8;
-
-      // Green afterimage trail
-      ctx.strokeStyle = "rgba(100, 200, 60, 0.3)";
-      ctx.lineWidth = b.r * 1.8;
-      ctx.lineCap = "round";
-      ctx.beginPath();
-      ctx.moveTo(b.x - dirX * b.r * 4, b.y - dirY * b.r * 4);
-      ctx.lineTo(b.x, b.y);
-      ctx.stroke();
-
-      // Outer needle glow
-      ctx.fillStyle = "rgba(120, 255, 80, 0.15)";
-      ctx.beginPath();
-      ctx.arc(b.x, b.y, b.r * 2.5, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Cactus body - green gradient
-      const cactusGrad = ctx.createRadialGradient(b.x - b.r * 0.2, b.y - b.r * 0.2, 0, b.x, b.y, b.r * 1.1);
-      cactusGrad.addColorStop(0, "#b8e888");
-      cactusGrad.addColorStop(0.6, "#6aaa44");
-      cactusGrad.addColorStop(1, "#3a7a28");
-      ctx.fillStyle = cactusGrad;
-      ctx.beginPath();
-      ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Draw 8 sharp needle spines
-      for (let t = 0; t < spineCount; t++) {
-        const a = rot + (Math.PI * 2 / spineCount) * t;
-        const baseX = b.x + Math.cos(a) * b.r * 0.6;
-        const baseY = b.y + Math.sin(a) * b.r * 0.6;
-        const tipX = b.x + Math.cos(a) * (b.r + 7);
-        const tipY = b.y + Math.sin(a) * (b.r + 7);
-        // Needle body
-        ctx.strokeStyle = "#e8eaa0";
-        ctx.lineWidth = 2;
-        ctx.lineCap = "round";
-        ctx.beginPath();
-        ctx.moveTo(baseX, baseY);
-        ctx.lineTo(tipX, tipY);
-        ctx.stroke();
-        // Needle tip glow
-        ctx.fillStyle = "rgba(255, 255, 230, 0.6)";
-        ctx.beginPath();
-        ctx.arc(tipX, tipY, 1.5, 0, Math.PI * 2);
-        ctx.fill();
-      }
-
-      // Inner cross pattern
-      ctx.strokeStyle = "rgba(200, 230, 150, 0.4)";
-      ctx.lineWidth = 1;
-      ctx.beginPath(); ctx.moveTo(b.x - b.r * 0.5, b.y); ctx.lineTo(b.x + b.r * 0.5, b.y); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(b.x, b.y - b.r * 0.5); ctx.lineTo(b.x, b.y + b.r * 0.5); ctx.stroke();
-
-      // Body highlight
-      ctx.fillStyle = "rgba(200, 255, 160, 0.35)";
-      ctx.beginPath();
-      ctx.arc(b.x - b.r * 0.25, b.y - b.r * 0.25, b.r * 0.4, 0, Math.PI * 2);
-      ctx.fill();
-
-    } else if (b.weaponId === "spore" || b.sprite === "spore") {
-      // ---- SPORE: Mushroom projectile with toxic puffs ----
-
-      // Toxic trail puffs
-      for (let t = 0; t < 4; t++) {
-        const off = (t + 1) * (b.r * 1.1);
-        const px = b.x - dirX * off + rand(-2, 2);
-        const py = b.y - dirY * off + rand(-2, 2);
-        const pAlpha = 0.22 - t * 0.04;
-        ctx.fillStyle = b.toxicGarden
-          ? `rgba(160, 255, 130, ${pAlpha})`
-          : `rgba(180, 120, 240, ${pAlpha})`;
-        ctx.beginPath();
-        ctx.arc(px, py, Math.max(2, b.r * (0.35 - t * 0.05)), 0, Math.PI * 2);
-        ctx.fill();
-      }
-
-      // Outer glow halo
-      const sporeHaloR = b.r * (1.8 + Math.sin(state.time * 16 + b.x * 0.02) * 0.2);
-      ctx.fillStyle = b.toxicGarden
-        ? "rgba(160, 255, 130, 0.12)"
-        : "rgba(180, 120, 240, 0.14)";
-      ctx.beginPath();
-      ctx.arc(b.x, b.y, sporeHaloR, 0, Math.PI * 2);
-      ctx.fill();
-
-      if (b.toxicGarden) {
-        const ringR = b.r * (1.5 + Math.sin(state.time * 20 + b.x * 0.03) * 0.12);
-        ctx.strokeStyle = "rgba(160, 255, 130, 0.55)";
-        ctx.lineWidth = 1.8;
-        ctx.beginPath();
-        ctx.arc(b.x, b.y, ringR, 0, Math.PI * 2);
-        ctx.stroke();
-      }
-
-      // Mushroom cap (semicircle on top)
-      ctx.save();
-      ctx.translate(b.x, b.y);
-      ctx.rotate(Math.atan2(b.vy, b.vx) - Math.PI / 2);
-      const capGrad = ctx.createRadialGradient(-b.r * 0.15, -b.r * 0.2, 0, 0, 0, b.r * 1.3);
-      capGrad.addColorStop(0, b.toxicGarden ? "#d0ffa8" : "#e0c0ff");
-      capGrad.addColorStop(0.5, b.toxicGarden ? "#7acc55" : "#b080e0");
-      capGrad.addColorStop(1, b.toxicGarden ? "#3a8828" : "#6a3aaa");
-      ctx.fillStyle = capGrad;
-      ctx.beginPath();
-      ctx.ellipse(0, -b.r * 0.1, b.r * 1.3, b.r * 0.9, 0, Math.PI, 0);
-      ctx.fill();
-      // Cap spots
-      ctx.fillStyle = b.toxicGarden ? "rgba(220, 255, 200, 0.6)" : "rgba(240, 220, 255, 0.6)";
-      ctx.beginPath(); ctx.arc(-b.r * 0.4, -b.r * 0.35, b.r * 0.22, 0, Math.PI * 2); ctx.fill();
-      ctx.beginPath(); ctx.arc(b.r * 0.3, -b.r * 0.4, b.r * 0.18, 0, Math.PI * 2); ctx.fill();
-      ctx.beginPath(); ctx.arc(0, -b.r * 0.55, b.r * 0.15, 0, Math.PI * 2); ctx.fill();
-      // Stem
-      ctx.fillStyle = b.toxicGarden ? "#c8e8b0" : "#e0d0f0";
-      ctx.fillRect(-b.r * 0.25, -b.r * 0.1, b.r * 0.5, b.r * 0.8);
-      ctx.restore();
-
-      if (b.evoMode === "sporeGatling") {
-        ctx.strokeStyle = "rgba(200, 255, 160, 0.55)";
-        ctx.lineWidth = 1.8;
-        ctx.beginPath();
-        ctx.arc(b.x, b.y, b.r * (1.6 + Math.sin(state.time * 24 + b.y * 0.03) * 0.12), 0, Math.PI * 2);
-        ctx.stroke();
-      }
-
-      // Spore bubble particles
-      if (Math.random() < 0.22) {
-        state.effects.push({
-          type: "swampBubble",
-          x: b.x + rand(-b.r, b.r),
-          y: b.y + rand(-b.r, b.r),
-          life: rand(0.25, 0.55),
-          maxLife: 0.55,
-          size: rand(2, 5),
-          vy: rand(12, 28)
-        });
-      }
-
-    } else {
-      // ---- GENERIC FALLBACK (corn default projectile, etc.) ----
-      ctx.strokeStyle = look.trail;
-      ctx.lineWidth = Math.max(3, b.r * 1.5);
-      ctx.lineCap = "round";
-      ctx.beginPath();
-      const trailLen = Math.min(b.r * 5, vLen * 0.1);
-      ctx.moveTo(b.x - dirX * trailLen, b.y - dirY * trailLen);
-      ctx.lineTo(b.x, b.y);
-      ctx.stroke();
-
-      if (b.evoMode === "supernova") {
-        ctx.fillStyle = "rgba(255, 210, 124, 0.28)";
-        ctx.beginPath();
-        ctx.arc(b.x, b.y, b.r * (2.2 + Math.sin(state.time * 18 + b.x * 0.03) * 0.3), 0, Math.PI * 2);
-        ctx.fill();
-      }
-
-      // Outer halo
-      ctx.fillStyle = look.outer || "rgba(150, 200, 255, 0.12)";
-      ctx.beginPath();
-      ctx.arc(b.x, b.y, b.r * 2.2, 0, Math.PI * 2);
-      ctx.fill();
-
-      const pulse = 0.85 + Math.sin(state.time * 22 + b.x * 0.02) * 0.15;
-      ctx.fillStyle = look.glow;
-      ctx.beginPath();
-      ctx.arc(b.x, b.y, b.r * (1.2 + pulse * 0.25), 0, Math.PI * 2);
-      ctx.fill();
-
-      if (img) {
-        const pulseFrame = stepPulseValue(state.time + b.x * 0.015 + b.y * 0.012, 18);
-        drawSprite(img, b.x, b.y, b.r * 2.5 * pulseFrame, b.r * 2.5 * (1.03 - (pulseFrame - 1) * 0.42), b.rotation);
-      } else {
-        ctx.fillStyle = "#6bd1ff";
-        ctx.beginPath();
-        ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
-        ctx.fill();
-      }
-
-      ctx.fillStyle = look.core;
-      ctx.beginPath();
-      ctx.arc(b.x - dirX * 1.1, b.y - dirY * 1.1, Math.max(1.8, b.r * 0.28), 0, Math.PI * 2);
-      ctx.fill();
+      radius = Math.max(16, (b.r || 8) * 2.8);
+      color = "rgba(208, 255, 218, 0.16)";
     }
+    if (radius <= 0) continue;
+    const g = ctx.createRadialGradient(b.x, b.y, 2, b.x, b.y, radius);
+    g.addColorStop(0, color.replace("0.2)", "0.28)").replace("0.18)", "0.25)").replace("0.17)", "0.24)").replace("0.16)", "0.22)"));
+    g.addColorStop(1, color.replace("0.2)", "0)").replace("0.18)", "0)").replace("0.17)", "0)").replace("0.16)", "0)"));
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(b.x, b.y, radius, 0, Math.PI * 2);
+    ctx.fill();
   }
 
   for (const h of state.hazards) {
@@ -4457,12 +3517,12 @@ function drawInGameHud() {
 }
 
 function bulletVisual(sprite) {
-  if (sprite === "pea") return { glow: "rgba(80, 255, 60, 0.5)", core: "#c0ffa8", trail: "rgba(60, 230, 80, 0.45)", outer: "rgba(40, 180, 50, 0.2)" };
-  if (sprite === "spike") return { glow: "rgba(120, 255, 80, 0.48)", core: "#e8ffcc", trail: "rgba(100, 220, 60, 0.4)", outer: "rgba(80, 180, 40, 0.18)" };
-  if (sprite === "spore") return { glow: "rgba(200, 120, 255, 0.52)", core: "#e8c8ff", trail: "rgba(180, 100, 240, 0.42)", outer: "rgba(140, 60, 200, 0.2)" };
-  if (sprite === "corn") return { glow: "rgba(255, 220, 80, 0.52)", core: "#fff0a0", trail: "rgba(255, 200, 40, 0.42)", outer: "rgba(200, 160, 20, 0.18)" };
-  if (sprite === "cherry") return { glow: "rgba(255, 100, 140, 0.55)", core: "#ffd0e0", trail: "rgba(255, 80, 120, 0.45)", outer: "rgba(200, 40, 80, 0.22)" };
-  return { glow: "rgba(180, 230, 255, 0.4)", core: "#ffffff", trail: "rgba(162, 221, 255, 0.32)", outer: "rgba(120, 180, 220, 0.15)" };
+  if (sprite === "pea") return { glow: "rgba(131, 255, 122, 0.45)", core: "#ddffd4", trail: "rgba(116, 240, 126, 0.38)" };
+  if (sprite === "spike") return { glow: "rgba(155, 255, 204, 0.42)", core: "#ecfff7", trail: "rgba(144, 231, 184, 0.34)" };
+  if (sprite === "spore") return { glow: "rgba(224, 173, 255, 0.44)", core: "#f6e8ff", trail: "rgba(206, 151, 250, 0.33)" };
+  if (sprite === "corn") return { glow: "rgba(255, 234, 164, 0.45)", core: "#fff5d0", trail: "rgba(255, 220, 126, 0.34)" };
+  if (sprite === "cherry") return { glow: "rgba(255, 171, 189, 0.45)", core: "#ffe7ef", trail: "rgba(255, 150, 177, 0.34)" };
+  return { glow: "rgba(180, 230, 255, 0.4)", core: "#ffffff", trail: "rgba(162, 221, 255, 0.32)" };
 }
 
 function draw() {
@@ -4482,6 +3542,310 @@ function draw() {
     ctx.beginPath();
     ctx.arc(o.x, o.y, o.r, 0, Math.PI * 2);
     ctx.fill();
+  }
+
+  for (const b of state.bullets) {
+    if (b.kind === "vine") {
+      const t = clamp((0.38 - b.warmup) / 0.38, 0, 1);
+      const ringR = b.splash * (0.22 + t * 0.82);
+      ctx.fillStyle = `rgba(145, 234, 96, ${0.22 + t * 0.18})`;
+      ctx.beginPath();
+      ctx.arc(b.x, b.y, ringR, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = `rgba(233, 255, 189, ${0.4 + t * 0.36})`;
+      ctx.lineWidth = 2.4;
+      ctx.beginPath();
+      ctx.arc(b.x, b.y, ringR * 0.92, 0, Math.PI * 2);
+      ctx.stroke();
+
+      const stemH = 10 + 48 * t;
+      ctx.strokeStyle = `rgba(56, 125, 44, ${0.6 + t * 0.35})`;
+      ctx.lineWidth = 6;
+      ctx.beginPath();
+      ctx.moveTo(b.x, b.y + 10);
+      ctx.lineTo(b.x, b.y + 10 - stemH);
+      ctx.stroke();
+
+      const topY = b.y + 10 - stemH;
+      ctx.fillStyle = `rgba(76, 176, 64, ${0.5 + t * 0.4})`;
+      ctx.beginPath();
+      ctx.ellipse(b.x - 10, topY + 10, 10, 5.5, -0.56, 0, Math.PI * 2);
+      ctx.ellipse(b.x + 10, topY + 6, 10, 5.5, 0.56, 0, Math.PI * 2);
+      ctx.ellipse(b.x - 6, topY + 20, 8, 4.2, -0.38, 0, Math.PI * 2);
+      ctx.ellipse(b.x + 7, topY + 18, 8, 4.2, 0.38, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Tomato fruits on the vine head for high readability.
+      const wobble = Math.sin(state.time * 11 + b.x * 0.02) * 1.1;
+      const fruits = [
+        { x: b.x - 12 + wobble, y: topY + 3, r: 5.8 },
+        { x: b.x + 12 - wobble, y: topY + 1, r: 5.8 },
+        { x: b.x + wobble * 0.5, y: topY - 4, r: 6.5 },
+      ];
+      for (const f of fruits) {
+        ctx.fillStyle = `rgba(231, 72, 68, ${0.65 + t * 0.3})`;
+        ctx.beginPath();
+        ctx.arc(f.x, f.y, f.r, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = `rgba(255, 214, 214, ${0.5 + t * 0.22})`;
+        ctx.beginPath();
+        ctx.arc(f.x - f.r * 0.25, f.y - f.r * 0.3, f.r * 0.34, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      continue;
+    }
+    if (b.kind === "cornShell") {
+      const vLen = Math.hypot(b.vx || 0, b.vy || 0) || 1;
+      const dirX = (b.vx || 0) / vLen;
+      const dirY = (b.vy || 0) / vLen;
+      const thornBomb = b.evoMode === "thornBomb";
+
+      // Projectile Trail
+      ctx.strokeStyle = thornBomb ? "rgba(188, 246, 174, 0.25)" : "rgba(255, 233, 167, 0.25)";
+      ctx.lineWidth = b.r * 1.8;
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      ctx.moveTo(b.x - dirX * (b.r * 6), b.y - dirY * (b.r * 6));
+      ctx.lineTo(b.x, b.y);
+      ctx.stroke();
+
+      ctx.strokeStyle = thornBomb ? "rgba(198, 255, 188, 0.52)" : "rgba(255, 223, 135, 0.45)";
+      ctx.lineWidth = Math.max(3, b.r * 0.9);
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      ctx.moveTo(b.x - dirX * (b.r * 2.8), b.y - dirY * (b.r * 2.8));
+      ctx.lineTo(b.x, b.y);
+      ctx.stroke();
+
+      ctx.fillStyle = thornBomb ? "rgba(188, 246, 174, 0.55)" : "rgba(255, 233, 167, 0.5)";
+      ctx.beginPath();
+      ctx.arc(b.x, b.y, b.r * 1.35, 0, Math.PI * 2);
+      ctx.fill();
+      if (thornBomb) {
+        ctx.strokeStyle = "rgba(236, 255, 225, 0.56)";
+        ctx.lineWidth = 2;
+        for (let s = 0; s < 6; s += 1) {
+          const a = (Math.PI * 2 * s) / 6 + state.time * 0.08;
+          const r1 = b.r * 0.7;
+          const r2 = b.r * 1.85;
+          ctx.beginPath();
+          ctx.moveTo(b.x + Math.cos(a) * r1, b.y + Math.sin(a) * r1);
+          ctx.lineTo(b.x + Math.cos(a) * r2, b.y + Math.sin(a) * r2);
+          ctx.stroke();
+        }
+      }
+      if (images.corn) {
+        drawSprite(images.corn, b.x, b.y, b.r * 2.5, b.r * 2.5, b.rotation + state.time * 9);
+      } else {
+        ctx.fillStyle = "#ffd768";
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      continue;
+    }
+    if (b.kind === "sporeCloud") {
+      const cloudAlpha = clamp(b.life / 0.9, 0, 1);
+      const cloudR = b.splash * (0.72 + (1 - cloudAlpha) * 0.35);
+      if (b.toxicGarden) {
+        const spin = b.spin || 0;
+        const grad = ctx.createRadialGradient(b.x, b.y, cloudR * 0.2, b.x, b.y, cloudR);
+        grad.addColorStop(0, `rgba(201, 255, 164, ${0.2 + cloudAlpha * 0.14})`);
+        grad.addColorStop(0.55, `rgba(166, 110, 212, ${0.2 + cloudAlpha * 0.2})`);
+        grad.addColorStop(1, "rgba(78, 184, 92, 0.06)");
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, cloudR, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = `rgba(215, 255, 198, ${0.18 + cloudAlpha * 0.34})`;
+        ctx.lineWidth = 2;
+        for (let v = 0; v < 4; v += 1) {
+          const ang = spin + (Math.PI * 2 * v) / 4;
+          ctx.beginPath();
+          ctx.ellipse(
+            b.x + Math.cos(ang) * cloudR * 0.22,
+            b.y + Math.sin(ang) * cloudR * 0.22,
+            cloudR * 0.52,
+            cloudR * 0.2,
+            ang,
+            0,
+            Math.PI * 2
+          );
+          ctx.stroke();
+        }
+        for (let p = 0; p < 11; p += 1) {
+          const a = (Math.PI * 2 * p) / 11 + state.time * 1.2 + spin * 0.4;
+          const r = cloudR * (0.34 + (p % 4) * 0.1);
+          const px = b.x + Math.cos(a) * r;
+          const py = b.y + Math.sin(a) * r;
+          ctx.fillStyle = p % 2 === 0
+            ? `rgba(188, 255, 161, ${0.16 + cloudAlpha * 0.24})`
+            : `rgba(213, 170, 255, ${0.14 + cloudAlpha * 0.22})`;
+          ctx.beginPath();
+          ctx.arc(px, py, 2.5 + (p % 3), 0, Math.PI * 2);
+          ctx.fill();
+        }
+      } else {
+        ctx.fillStyle = `rgba(160, 118, 205, ${0.14 + cloudAlpha * 0.18})`;
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, cloudR, 0, Math.PI * 2);
+        ctx.fill();
+        for (let p = 0; p < 7; p += 1) {
+          const a = (Math.PI * 2 * p) / 7 + state.time * 0.9;
+          const r = cloudR * (0.35 + (p % 3) * 0.12);
+          const px = b.x + Math.cos(a) * r;
+          const py = b.y + Math.sin(a) * r;
+          ctx.fillStyle = `rgba(206, 168, 255, ${0.18 + cloudAlpha * 0.22})`;
+          ctx.beginPath();
+          ctx.arc(px, py, 3.1 + (p % 2), 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+      continue;
+    }
+
+    const img = images[b.sprite];
+    const look = bulletVisual(b.sprite);
+    const vLen = Math.hypot(b.vx || 0, b.vy || 0) || 1;
+    const dirX = (b.vx || 0) / vLen;
+    const dirY = (b.vy || 0) / vLen;
+
+    // Default Projectile Glow & Trail
+    if (b.weaponId === "pea") {
+      // Leaf projectile trail
+      ctx.strokeStyle = "rgba(100, 200, 100, 0.5)";
+      ctx.lineWidth = 2;
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      const trailLen = Math.min(b.r * 6, vLen * 0.1);
+      ctx.moveTo(b.x - dirX * trailLen, b.y - dirY * trailLen);
+      ctx.lineTo(b.x, b.y);
+      ctx.stroke();
+
+      // Draw leaf shape
+      ctx.save();
+      ctx.translate(b.x, b.y);
+      ctx.rotate(Math.atan2(b.vy, b.vx));
+      ctx.fillStyle = "#5acc5a";
+      ctx.beginPath();
+      ctx.ellipse(0, 0, b.r * 1.5, b.r * 0.8, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = "#256325";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(-b.r, 0);
+      ctx.lineTo(b.r, 0);
+      ctx.stroke();
+      ctx.restore();
+
+      // Emit occasional leaf particles
+      if (Math.random() < 0.15) {
+        state.effects.push({
+          type: "leafBurst",
+          x: b.x,
+          y: b.y,
+          life: rand(0.2, 0.4),
+          maxLife: 0.4,
+          size: rand(4, 8),
+          vx: b.vx * 0.2 + rand(-20, 20),
+          vy: b.vy * 0.2 + rand(-20, 20),
+          rot: rand(0, Math.PI * 2)
+        });
+      }
+    } else if (b.weaponId === "spike") {
+      ctx.fillStyle = "#ffcc44";
+      ctx.beginPath();
+      ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = "#b36b00";
+      ctx.lineWidth = 1.5;
+      for (let t = 0; t < 4; t++) {
+        const a = b.rotation + (Math.PI / 2) * t;
+        ctx.beginPath();
+        ctx.moveTo(b.x + Math.cos(a) * b.r * 0.5, b.y + Math.sin(a) * b.r * 0.5);
+        ctx.lineTo(b.x + Math.cos(a) * (b.r + 6), b.y + Math.sin(a) * (b.r + 6));
+        ctx.stroke();
+      }
+    } else {
+      ctx.strokeStyle = look.trail;
+      ctx.lineWidth = Math.max(3, b.r * 1.5);
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      // Trail stretches further based on speed
+      const trailLen = Math.min(b.r * 4.5, vLen * 0.08);
+      ctx.moveTo(b.x - dirX * trailLen, b.y - dirY * trailLen);
+      ctx.lineTo(b.x, b.y);
+      ctx.stroke();
+
+      if (b.evoMode === "supernova") {
+        ctx.fillStyle = "rgba(255, 210, 124, 0.24)";
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, b.r * (2 + Math.sin(state.time * 18 + b.x * 0.03) * 0.3), 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      if (b.sprite === "spore") {
+        if (b.toxicGarden) {
+          const ringR = b.r * (1.4 + Math.sin(state.time * 20 + b.x * 0.03) * 0.12);
+          ctx.strokeStyle = "rgba(191, 255, 165, 0.62)";
+          ctx.lineWidth = 1.8;
+          ctx.beginPath();
+          ctx.arc(b.x, b.y, ringR, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+        for (let t = 0; t < 3; t += 1) {
+          const off = (t + 1) * (b.r * 0.95);
+          const px = b.x - dirX * off + rand(-1.5, 1.5);
+          const py = b.y - dirY * off + rand(-1.5, 1.5);
+          ctx.fillStyle = b.toxicGarden
+            ? `rgba(188, 255, 163, ${0.18 + t * 0.08})`
+            : `rgba(191, 139, 239, ${0.18 + t * 0.08})`;
+          ctx.beginPath();
+          ctx.arc(px, py, Math.max(1.6, b.r * (0.22 + t * 0.08)), 0, Math.PI * 2);
+          ctx.fill();
+        }
+        if (b.evoMode === "sporeGatling") {
+          ctx.strokeStyle = "rgba(235, 255, 202, 0.62)";
+          ctx.lineWidth = 1.7;
+          ctx.beginPath();
+          ctx.arc(b.x, b.y, b.r * (1.55 + Math.sin(state.time * 24 + b.y * 0.03) * 0.12), 0, Math.PI * 2);
+          ctx.stroke();
+        }
+        // Spore Bubbles emitting while traveling
+        if (Math.random() < 0.2) {
+          state.effects.push({
+            type: "swampBubble",
+            x: b.x + rand(-b.r, b.r),
+            y: b.y + rand(-b.r, b.r),
+            life: rand(0.2, 0.5),
+            maxLife: 0.5,
+            size: rand(2, 5),
+            vy: rand(15, 30)
+          });
+        }
+      }
+
+      const pulse = 0.85 + Math.sin(state.time * 22 + b.x * 0.02) * 0.15;
+      ctx.fillStyle = look.glow;
+      ctx.beginPath();
+      ctx.arc(b.x, b.y, b.r * (1.15 + pulse * 0.2), 0, Math.PI * 2);
+      ctx.fill();
+
+      if (img) {
+        const pulseFrame = stepPulseValue(state.time + b.x * 0.015 + b.y * 0.012, 18);
+        drawSprite(img, b.x, b.y, b.r * 2.3 * pulseFrame, b.r * 2.3 * (1.03 - (pulseFrame - 1) * 0.42), b.rotation);
+      } else {
+        ctx.fillStyle = "#6bd1ff";
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      ctx.fillStyle = look.core;
+      ctx.beginPath();
+      ctx.arc(b.x - dirX * 1.1, b.y - dirY * 1.1, Math.max(1.6, b.r * 0.26), 0, Math.PI * 2);
+      ctx.fill();
+    }
   }
 
   for (const h of state.hazards) {
@@ -5261,9 +4625,56 @@ function draw() {
   ctx.fillStyle = "rgba(255, 104, 104, 0.96)";
   ctx.fillRect(hpBarX, hpBarY, hpBarW * clamp(p.hp / p.maxHp, 0, 1), 6);
 
-  // Render projectiles, atmospheric lighting, and player glow
-  drawLightingOverlay();
-
+  const spike = state.player.weapons.spike;
+  if (spike?.enabled) {
+    const orbCount = Math.max(1, spike.orbCount || 2);
+    const orbRadius = Math.max(8, spike.radius * 1.05);
+    const evoTurret = spike.evolvedKey === "pea+spike";
+    if (evoTurret) {
+      const auraR = (spike.orbitRadius || 78) + 14 + Math.sin(state.time * 5.2) * 3;
+      ctx.strokeStyle = "rgba(188, 255, 170, 0.38)";
+      ctx.lineWidth = 2.4;
+      ctx.setLineDash([7, 7]);
+      ctx.beginPath();
+      ctx.arc(p.x, p.y + bob * 0.2, auraR, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      for (let s = 0; s < 12; s += 1) {
+        const a = (Math.PI * 2 * s) / 12 + state.time * 0.8;
+        const r1 = auraR - 8;
+        const r2 = auraR + 7 + Math.sin(state.time * 7 + s) * 2;
+        ctx.strokeStyle = "rgba(221, 255, 202, 0.28)";
+        ctx.lineWidth = 1.8;
+        ctx.beginPath();
+        ctx.moveTo(p.x + Math.cos(a) * r1, p.y + bob * 0.2 + Math.sin(a) * r1);
+        ctx.lineTo(p.x + Math.cos(a) * r2, p.y + bob * 0.2 + Math.sin(a) * r2);
+        ctx.stroke();
+      }
+    }
+    for (let i = 0; i < orbCount; i += 1) {
+      const orb = spikeOrbPosition(spike, i);
+      const halo = evoTurret ? "rgba(201, 255, 163, 0.36)" : "rgba(150, 236, 191, 0.32)";
+      ctx.fillStyle = halo;
+      ctx.beginPath();
+      ctx.arc(orb.x, orb.y, orbRadius * 1.4, 0, Math.PI * 2);
+      ctx.fill();
+      if (evoTurret) {
+        ctx.strokeStyle = "rgba(237, 255, 215, 0.58)";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(orb.x, orb.y, orbRadius * (1.02 + Math.sin(state.time * 14 + i) * 0.06), 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      if (images.spike) {
+        drawSprite(images.spike, orb.x, orb.y, orbRadius * 2.4, orbRadius * 2.4, state.time * 9 + i * 0.6);
+      } else {
+        ctx.fillStyle = "#c5ffe3";
+        ctx.beginPath();
+        ctx.arc(orb.x, orb.y, orbRadius, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+  }
   if (shake > 0) ctx.restore();
   if (pHurt > 0) {
     const hurtGrad = ctx.createRadialGradient(p.x, p.y, p.r * 0.8, p.x, p.y, canvas.width * 0.58);
@@ -5309,7 +4720,7 @@ function updateHud() {
     bossNameEl.textContent = `보스: ${name}`;
     bossFillEl.style.width = `${clamp((boss.hp / boss.maxHp) * 100, 0, 100)}%`;
   } else if (state.bossDirector.spawned === 0) {
-    const firstBossAt = BALANCE.wave.boss.spawnSecs[0];
+    const firstBossAt = BALANCE.wave.boss.firstSpawnSec;
     const remainSec = Math.max(0, Math.ceil(firstBossAt - state.time));
     bossHudEl.classList.remove("hidden");
     bossNameEl.textContent = `첫 보스까지 ${formatTime(remainSec)}`;
@@ -5479,8 +4890,25 @@ window.addEventListener("keydown", (e) => {
     return;
   }
   if (e.code === "F10") {
-    e.preventDefault();
-    toggleTestModePanel();
+    if (state.testMode) {
+      state.lastTs = 0;
+      resetGame();
+      pushSystemBanner("테스트 모드 OFF");
+    } else {
+      enterEvolutionTestMode(state.testEvolutionIndex || 0);
+    }
+    return;
+  }
+  if (e.code === "F11") {
+    if (state.testMode) cycleEvolutionTestMode(1);
+    return;
+  }
+  if (e.code === "F12") {
+    if (state.testMode) {
+      clearCombatField();
+      spawnTrainingDummies(20);
+      pushSystemBanner("테스트 더미 리스폰");
+    }
     return;
   }
   if (e.code === "F1") {

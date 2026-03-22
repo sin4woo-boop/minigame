@@ -722,3 +722,129 @@ button,
     display: none !important;
   }
 }
+
+/* ==== Test Mode Panel ==== */
+.test-mode-panel {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 35;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(2px);
+  padding: 16px;
+}
+
+.test-mode-inner {
+  background: linear-gradient(180deg, #2a3350, #1e2740);
+  border: 3px solid #4a5a80;
+  border-radius: 16px;
+  padding: 16px 20px;
+  width: min(500px, 92vw);
+  max-height: 85vh;
+  overflow-y: auto;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+}
+
+.test-mode-header {
+  text-align: center;
+  font-size: 22px;
+  font-weight: 900;
+  color: #ffe64d;
+  margin-bottom: 14px;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+}
+
+.test-mode-section {
+  margin-bottom: 12px;
+}
+
+.test-section-title {
+  font-size: 13px;
+  font-weight: 800;
+  color: #8eaacc;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}
+
+.test-buttons {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.test-btn {
+  border: 2px solid #3a4a6a;
+  border-radius: 10px;
+  background: linear-gradient(180deg, #4a5a7a, #3a4a62);
+  color: #e8efff;
+  font-size: 12px;
+  font-weight: 800;
+  padding: 10px 8px;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.15s;
+  box-shadow: 0 3px 0 #2a3a52, inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  font-family: inherit;
+}
+
+.test-btn:hover {
+  background: linear-gradient(180deg, #5a6a8a, #4a5a72);
+  border-color: #5a7aaa;
+}
+
+.test-btn:active {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 #2a3a52;
+}
+
+.test-btn.active {
+  background: linear-gradient(180deg, #4888cc, #3068aa);
+  border-color: #6aaaee;
+  color: #ffffff;
+}
+
+.test-btn.evo-btn {
+  background: linear-gradient(180deg, #5a4a7a, #4a3a6a);
+  border-color: #6a5a8a;
+}
+
+.test-btn.evo-btn:hover {
+  background: linear-gradient(180deg, #6a5a8a, #5a4a7a);
+}
+
+.test-btn.evo-btn.active {
+  background: linear-gradient(180deg, #8844cc, #6622aa);
+  border-color: #aa66ee;
+}
+
+.test-util-buttons {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.test-btn.test-util {
+  background: linear-gradient(180deg, #4a6a4a, #3a5a3a);
+  border-color: #5a8a5a;
+}
+
+.test-btn.test-ok {
+  background: linear-gradient(180deg, #d38f2a, #a86c1c);
+  border-color: #e4a84e;
+  font-size: 13px;
+  color: #fff;
+}
+
+.test-btn.test-ok:hover {
+  background: linear-gradient(180deg, #e4a84e, #d38f2a);
+}
+
+.test-btn.test-exit {
+  background: linear-gradient(180deg, #6a4a4a, #5a3a3a);
+  border-color: #8a5a5a;
+  color: #ffcccc;
+}
